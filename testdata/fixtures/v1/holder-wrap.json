@@ -1,0 +1,131 @@
+{
+  "cases": [
+    {
+      "name": "device holder",
+      "credential_id_hex": "686f6c6465722d63726564656e7469616c2d6964",
+      "prf_output_hex": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "secret_utf8": null,
+      "blob_hex": "010001012c9753530729ec47101112131415161718191a1b07422248506859ee2b52b49dfaca9faff0513977f6700c556151aed512768d07e027be4ac75d0363f856744ee04f628c47a3db4baff5317520cdb52fd862b009910f9af1864dd0b7e3013177fbeb0be3643184959f155d75230bf23c5f1f42b08fcfbaa03421dc2a8e24cdace941c562"
+    },
+    {
+      "name": "contact",
+      "credential_id_hex": "686f6c6465722d63726564656e7469616c2d6964",
+      "prf_output_hex": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "secret_utf8": "contact secret ñ",
+      "argon2": {
+        "m": 19456,
+        "p": 1,
+        "salt_hex": "202122232425262728292a2b2c2d2e2f",
+        "t": 2
+      },
+      "blob_hex": "010100004c000000000201202122232425262728292a2b2c2d2e2f01012c9753530729ec47101112131415161718191a1b0c4a0574739643586b5e12c46b4321c2f96156b0f8c66239e133dcb9c13eae90d0044968235f955c8212a5e5ec9ef46ef6891b52266e75ef9342e54951374fdb0a32d000c816d221dec012b267a61ae8cd083e1e45d6ebe58df1e30ae49d50dd578f40997deff3841524c7500bb39cff"
+    }
+  ],
+  "description": "The wrap of a holder device's seeds: blob = 0x01 | mode | [m u32 BE | t u32 BE | p u8 | salt 16] | envelope. Mode 0 is a device holder (key = HKDF(PRF output, label || credential id)); mode 1 is a contact (key = HKDF(PRF output || Argon2id(secret, salt, m, t, p), label || credential id)). The envelope key id is the first 8 bytes of SHA-256(credential id); its AAD is label || 0x00 || the header. The plaintext is the KEM seed then the signing seed. A secret is NFKC-normalized UTF-8.",
+  "label": "cdv/v1/holder-seed-wrap",
+  "refuse": [
+    {
+      "name": "another PRF output",
+      "case": "device holder",
+      "blob_hex": "010001012c9753530729ec47101112131415161718191a1b07422248506859ee2b52b49dfaca9faff0513977f6700c556151aed512768d07e027be4ac75d0363f856744ee04f628c47a3db4baff5317520cdb52fd862b009910f9af1864dd0b7e3013177fbeb0be3643184959f155d75230bf23c5f1f42b08fcfbaa03421dc2a8e24cdace941c562",
+      "credential_id_hex": "686f6c6465722d63726564656e7469616c2d6964",
+      "prf_output_hex": "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf",
+      "secret_utf8": null,
+      "error": "wrap"
+    },
+    {
+      "name": "another credential",
+      "case": "device holder",
+      "blob_hex": "010001012c9753530729ec47101112131415161718191a1b07422248506859ee2b52b49dfaca9faff0513977f6700c556151aed512768d07e027be4ac75d0363f856744ee04f628c47a3db4baff5317520cdb52fd862b009910f9af1864dd0b7e3013177fbeb0be3643184959f155d75230bf23c5f1f42b08fcfbaa03421dc2a8e24cdace941c562",
+      "credential_id_hex": "616e6f746865722d63726564656e7469616c2d6964",
+      "prf_output_hex": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "secret_utf8": null,
+      "error": "wrap"
+    },
+    {
+      "name": "a secret the device holder never had",
+      "case": "device holder",
+      "blob_hex": "010001012c9753530729ec47101112131415161718191a1b07422248506859ee2b52b49dfaca9faff0513977f6700c556151aed512768d07e027be4ac75d0363f856744ee04f628c47a3db4baff5317520cdb52fd862b009910f9af1864dd0b7e3013177fbeb0be3643184959f155d75230bf23c5f1f42b08fcfbaa03421dc2a8e24cdace941c562",
+      "credential_id_hex": "686f6c6465722d63726564656e7469616c2d6964",
+      "prf_output_hex": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "secret_utf8": "contact secret ñ",
+      "error": "wrap"
+    },
+    {
+      "name": "a changed ciphertext byte",
+      "case": "device holder",
+      "blob_hex": "010001012c9753530729ec47101112131415161718191a1b07422248506859ee2b52b49dfaca9faff0513977f6700c556151aed512768d07e027be4ac75d0363f856744ee04f628c47a3db4baff5317520cdb52fd862b009910f9af1864dd0b7e3013177fbeb0be3643184959f155d75230bf23c5e1f42b08fcfbaa03421dc2a8e24cdace941c562",
+      "credential_id_hex": "686f6c6465722d63726564656e7469616c2d6964",
+      "prf_output_hex": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "secret_utf8": null,
+      "error": "wrap"
+    },
+    {
+      "name": "a changed version",
+      "case": "device holder",
+      "blob_hex": "000001012c9753530729ec47101112131415161718191a1b07422248506859ee2b52b49dfaca9faff0513977f6700c556151aed512768d07e027be4ac75d0363f856744ee04f628c47a3db4baff5317520cdb52fd862b009910f9af1864dd0b7e3013177fbeb0be3643184959f155d75230bf23c5f1f42b08fcfbaa03421dc2a8e24cdace941c562",
+      "credential_id_hex": "686f6c6465722d63726564656e7469616c2d6964",
+      "prf_output_hex": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "secret_utf8": null,
+      "error": "wrap"
+    },
+    {
+      "name": "no secret",
+      "case": "contact",
+      "blob_hex": "010100004c000000000201202122232425262728292a2b2c2d2e2f01012c9753530729ec47101112131415161718191a1b0c4a0574739643586b5e12c46b4321c2f96156b0f8c66239e133dcb9c13eae90d0044968235f955c8212a5e5ec9ef46ef6891b52266e75ef9342e54951374fdb0a32d000c816d221dec012b267a61ae8cd083e1e45d6ebe58df1e30ae49d50dd578f40997deff3841524c7500bb39cff",
+      "credential_id_hex": "686f6c6465722d63726564656e7469616c2d6964",
+      "prf_output_hex": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "secret_utf8": null,
+      "error": "wrap"
+    },
+    {
+      "name": "a wrong secret",
+      "case": "contact",
+      "blob_hex": "010100004c000000000201202122232425262728292a2b2c2d2e2f01012c9753530729ec47101112131415161718191a1b0c4a0574739643586b5e12c46b4321c2f96156b0f8c66239e133dcb9c13eae90d0044968235f955c8212a5e5ec9ef46ef6891b52266e75ef9342e54951374fdb0a32d000c816d221dec012b267a61ae8cd083e1e45d6ebe58df1e30ae49d50dd578f40997deff3841524c7500bb39cff",
+      "credential_id_hex": "686f6c6465722d63726564656e7469616c2d6964",
+      "prf_output_hex": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "secret_utf8": "contact secret n",
+      "error": "wrap"
+    },
+    {
+      "name": "another PRF output",
+      "case": "contact",
+      "blob_hex": "010100004c000000000201202122232425262728292a2b2c2d2e2f01012c9753530729ec47101112131415161718191a1b0c4a0574739643586b5e12c46b4321c2f96156b0f8c66239e133dcb9c13eae90d0044968235f955c8212a5e5ec9ef46ef6891b52266e75ef9342e54951374fdb0a32d000c816d221dec012b267a61ae8cd083e1e45d6ebe58df1e30ae49d50dd578f40997deff3841524c7500bb39cff",
+      "credential_id_hex": "686f6c6465722d63726564656e7469616c2d6964",
+      "prf_output_hex": "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf",
+      "secret_utf8": "contact secret ñ",
+      "error": "wrap"
+    },
+    {
+      "name": "a changed salt",
+      "case": "contact",
+      "blob_hex": "010100004c000000000201202022232425262728292a2b2c2d2e2f01012c9753530729ec47101112131415161718191a1b0c4a0574739643586b5e12c46b4321c2f96156b0f8c66239e133dcb9c13eae90d0044968235f955c8212a5e5ec9ef46ef6891b52266e75ef9342e54951374fdb0a32d000c816d221dec012b267a61ae8cd083e1e45d6ebe58df1e30ae49d50dd578f40997deff3841524c7500bb39cff",
+      "credential_id_hex": "686f6c6465722d63726564656e7469616c2d6964",
+      "prf_output_hex": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "secret_utf8": "contact secret ñ",
+      "error": "wrap"
+    },
+    {
+      "name": "a changed pass count",
+      "case": "contact",
+      "blob_hex": "010100004c000000000301202122232425262728292a2b2c2d2e2f01012c9753530729ec47101112131415161718191a1b0c4a0574739643586b5e12c46b4321c2f96156b0f8c66239e133dcb9c13eae90d0044968235f955c8212a5e5ec9ef46ef6891b52266e75ef9342e54951374fdb0a32d000c816d221dec012b267a61ae8cd083e1e45d6ebe58df1e30ae49d50dd578f40997deff3841524c7500bb39cff",
+      "credential_id_hex": "686f6c6465722d63726564656e7469616c2d6964",
+      "prf_output_hex": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "secret_utf8": "contact secret ñ",
+      "error": "wrap"
+    },
+    {
+      "name": "memory above the ceiling",
+      "case": "contact",
+      "blob_hex": "010101004c000000000201202122232425262728292a2b2c2d2e2f01012c9753530729ec47101112131415161718191a1b0c4a0574739643586b5e12c46b4321c2f96156b0f8c66239e133dcb9c13eae90d0044968235f955c8212a5e5ec9ef46ef6891b52266e75ef9342e54951374fdb0a32d000c816d221dec012b267a61ae8cd083e1e45d6ebe58df1e30ae49d50dd578f40997deff3841524c7500bb39cff",
+      "credential_id_hex": "686f6c6465722d63726564656e7469616c2d6964",
+      "prf_output_hex": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "secret_utf8": "contact secret ñ",
+      "error": "wrap"
+    }
+  ],
+  "seeds": {
+    "kem_seed_hex": "505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f",
+    "sign_seed_hex": "707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f"
+  }
+}

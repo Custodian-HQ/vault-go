@@ -1,0 +1,1314 @@
+openapi: 3.1.0
+
+info:
+  title: Custodian Data Vault API
+  version: 0.1.0
+  summary: The business API of Custodian Data Vault.
+  description: |
+    Your servers use this API to start customer sessions, read results and manage the vault's settings. Customers never
+    use it: they use the hosted pages.
+
+    ## Conventions
+
+    - **Base URL:** `https://api.thecustodian.io/vault/v1`.
+    - **Authentication:** an API key as `Authorization: Bearer <key>`. A key is made in the console and shown once. A key works
+      in one mode: `cdv_test_...` for test data, `cdv_live_...` for live data. The two never see each other's data.
+    - **Errors:** every error has this shape, and nothing else is returned:
+
+      ```json
+      { "error": { "type": "invalid_request_error", "code": "invalid_return_url", "message": "...", "param": "return_url", "request_id": "..." } }
+      ```
+
+      `type` is one of `invalid_request_error`, `authentication_error`, `permission_error`, `not_found_error`,
+      `rate_limit_error`, `conflict_error`, `api_error`. Quote `request_id` when you contact support.
+    - **Idempotency:** send `Idempotency-Key` (up to 255 characters) on a `POST` to make it safe to repeat. A repeat with the same
+      key and the same request returns the first answer, marked `Idempotent-Replayed: true`. The same key with a different request
+      returns `422 idempotency_key_reused`. A repeat while the first is still running returns `409 idempotency_key_in_progress`.
+      Answers are kept for 24 hours. An answer of 500 or above is not kept, so a retry runs again.
+    - **Limits:** the number of requests a key may make comes from your plan, and test mode may have a lower limit. Over the limit
+      you get `429` with `Retry-After`.
+
+    ## Personal data we process about your customers
+
+    Besides the ciphertext of the data you ask them to keep, the vault holds three items in plain text about a customer: the **id and
+    `external_ref`** you gave, the **first and last name** the customer confirmed at enrolment (1 to 60 characters each), and the
+    **email addresses of the trusted contacts** the customer chose. The name is not secret. It is shown only to the customer, to you
+    (in the customer record) and, after their passkey sign-in, to a trusted contact the customer chose, and it is in the emails to
+    that contact. It is never given to any other business. It is deleted when the customer is reset or deleted. No email carries a
+    reason, asset type, amount, recovery code or key.
+
+    ## Sandbox (test mode)
+
+    Test mode, with `cdv_test_...` keys, is for **test data only**. Do not store real customer data in it. The data processing
+    agreement covers production (live mode) only. Test mode looks like production to your code, and behaves the same for security,
+    but its scale and data life are limited by your plan:
+
+    - **Test customer cap.** A new test customer is refused with `403` and the code `test_customer_cap_reached` when you are at the
+      number your plan allows. Delete test customers or reset the sandbox in the console.
+    - **Data expiry.** Test data is deleted automatically after the number of days your plan sets, after a warning email. The console
+      has a **Reset sandbox** action that deletes all test data at once. Settings, keys and webhook endpoints stay.
+    - **Test mode banner.** Every hosted screen in test mode shows a "Test mode" banner. It is part of the hosted page and cannot be
+      changed or hidden.
+    - **Separate domain.** Test links start on the sandbox domain, with its own passkeys. Nothing moves from test to live.
+    - **Review.** Accounts that show signs of real use in test mode get an email. Nothing is blocked automatically.
+
+    To fill the sandbox with test customers, run this with a test key:
+
+    ```sh
+    for i in $(seq 1 10); do
+      curl -sS -X POST https://api.thecustodian.io/vault/v1/customers \
+        -H "Authorization: Bearer $CUSTODIAN_TEST_KEY" -H "Content-Type: application/json" \
+        -d "{\"external_ref\": \"test-user-$i\"}"
+    done
+    ```
+
+    ## Live mode and billing
+
+    Live mode opens when the first invoice of the plan you chose is paid. Until then, new live customers and sessions are refused with `402` and the code `billing_payment_required`.
+
+    If a payment fails and the grace period ends, live mode pauses **new** work: a new customer (`402`, code `billing_suspended`) and
+    new `enrol`, `entry` and `approve` sessions. Your customers can still recover and manage their own data, and test mode is never paused.
+
+servers:
+  - url: "{protocol}://{host}/vault/v1"
+    description: Custodian Data Vault API
+    variables:
+      protocol:
+        default: https
+        enum: [http, https]
+      host:
+        default: api.thecustodian.io
+
+security:
+  - apiKey: []
+
+tags:
+  - name: Account
+    description: Check an API key and see which organization and mode it belongs to.
+  - name: Customers
+    description: The people who keep data in your vault.
+  - name: Sessions
+    description: A visit of a customer to the hosted vault pages, started by you.
+  - name: Records
+    description: What a customer keeps with you. You see tokens and key names, never values.
+  - name: Templates
+    description: Named lists of the keys you ask customers for.
+  - name: Disclosure keys
+    description: The public keys you receive disclosures with. Customers check them before they approve.
+  - name: Disclosures
+    description: Requests to see named keys of one customer. The customer decides.
+  - name: Webhooks
+    description: Events sent to your servers, signed, with a delivery log.
+  - name: Usage
+    description: What you used, and the audit log.
+  - name: Settings
+    description: Settings of your vault that your servers may read and change.
+
+paths:
+  /me:
+    get:
+      tags: [Account]
+      operationId: getMe
+      summary: Whose key is this
+      description: |
+        Returns the organization the API key belongs to and its mode. It is a good first call to check a new key.
+      responses:
+        '200':
+          description: The key's organization and mode.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /recovery-policy:
+    get:
+      tags: [Settings]
+      operationId: getRecoveryPolicy
+      summary: Get the recovery policy
+      description: How many holders are needed to recover a customer's vault.
+      responses:
+        '200':
+          description: The policy.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryPolicy' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    put:
+      tags: [Settings]
+      operationId: setRecoveryPolicy
+      summary: Set the recovery policy
+      description: The threshold must be between 2 and 10. Unknown fields are refused.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecoveryPolicy' }
+      responses:
+        '200':
+          description: The policy as saved.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryPolicy' }
+        '400':
+          description: The body is not valid (`invalid_body`) or the threshold is out of range (`invalid_recovery_threshold`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /customers:
+    post:
+      tags: [Customers]
+      operationId: createCustomer
+      summary: Create a customer
+      description: |
+        Makes a record for a person you will ask to keep data in the vault. The `external_ref` is your own id for them: one per mode. A customer exists before they enrol. You may offer a `first_name` and `last_name`; the customer confirms or corrects them at enrolment.
+        Send an `Idempotency-Key` to make a retry safe.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCustomer' }
+      responses:
+        '201':
+          description: The customer.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Customer' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/PaymentRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    get:
+      tags: [Customers]
+      operationId: listCustomers
+      summary: List customers
+      description: |
+        Newest first. Use `starting_after` with the id of the last customer of the previous page. `external_ref` narrows the list.
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: starting_after, in: query, schema: { type: string } }
+        - { name: external_ref, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: A page of customers.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /customers/{id}:
+    get:
+      tags: [Customers]
+      operationId: getCustomer
+      summary: Get a customer
+      description: |
+        Returns the customer if it belongs to your organization and the key's mode.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The customer id, such as `cus_...`.
+          schema: { type: string }
+      responses:
+        '200':
+          description: The customer.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Customer' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Customers]
+      operationId: deleteCustomer
+      summary: Delete a customer
+      description: |
+        Deletes the customer and all their data at once: records, files, key copies, recovery holders, visits and passkeys. The customer is not
+        asked, and this cannot be undone. The `customer.deleted` event is sent. Your audit log keeps the event, the time and the customer id only.
+        The `external_ref` can be used again.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The customer id, such as `cus_...`.
+          schema: { type: string }
+      responses:
+        '204': { description: The customer and all their data are deleted. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /customers/{id}/reset:
+    post:
+      tags: [Customers]
+      operationId: resetCustomer
+      summary: Start a reset of a customer
+      description: |
+        Use this when a customer has lost every way into their vault, including recovery. It starts a `reset` visit and sends nothing else:
+        **nothing is deleted until the customer confirms** on the hosted page, which tells them the old data cannot be got back. No key is needed.
+        Send the customer to the `url` in the answer. It is shown once and works for 15 minutes, once.
+
+        When the customer confirms, in one step and with no grace period, the vault deletes all records, files, both key copies, all shares,
+        all holders, passkeys and the customer's name. Old data cannot be read again. The customer reference stays, with state
+        `reset_enrolment_needed`, and the customer enrols again with an `enrol` visit. You get `record.deleted` for each old record token,
+        `customer.reset` and `session.completed`. The `customer.enrolled` event of the next enrolment carries a new vault-sign key.
+        Your audit log keeps the confirmation. The customer's earlier audit events lose their details.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The customer id, such as `cus_...`.
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [return_url, state]
+              properties:
+                return_url: { type: string, description: One of the addresses you registered for this key's mode. }
+                state: { type: string, description: A value you can tie to your signed-in user. It comes back with the customer. }
+      responses:
+        '201':
+          description: The reset visit. Nothing is deleted yet.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /records:
+    get:
+      tags: [Records]
+      operationId: listRecords
+      summary: List a customer's records
+      description: |
+        Returns the token and the key names of each record, newest first. You never see a value: values are encrypted on the customer's device,
+        and only a disclosure the customer approves reaches you. Use `starting_after` with the token of the last record of the previous page.
+      parameters:
+        - { name: customer, in: query, required: true, description: The customer id., schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: starting_after, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: A page of records.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecordPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /records/{token}:
+    get:
+      tags: [Records]
+      operationId: getRecord
+      summary: Get a record
+      description: |
+        Returns the token and the key names of one record. Tokens are random and carry no personal data.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: The record token, such as `rec_...`.
+          schema: { type: string }
+      responses:
+        '200':
+          description: The record.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Record' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /disclosure-keys:
+    get:
+      tags: [Disclosure keys]
+      operationId: listDisclosureKeys
+      summary: List disclosure keys
+      description: |
+        The public keys registered in this mode, newest first, with retired keys. A retiring key stops working at `retires_at`.
+      responses:
+        '200':
+          description: The keys.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DisclosureKeyList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [Disclosure keys]
+      operationId: registerDisclosureKey
+      summary: Register a disclosure key
+      description: |
+        Registers the **public** key your server opens disclosures with. Make the key pair with the SDK and keep the private key on your server. Send the raw public key, base64 encoded.
+        The new key is active at once. The key that was active keeps working for the grace period (72 hours), so a server that has not moved to the new fingerprint is not cut off.
+        A key that was registered before, in any mode, is refused. Every member who can manage the vault gets an email about the change.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterDisclosureKey' }
+      responses:
+        '201':
+          description: The key.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DisclosureKey' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /disclosure-keys/{kid}/retire:
+    post:
+      tags: [Disclosure keys]
+      operationId: retireDisclosureKey
+      summary: Retire a disclosure key now
+      description: |
+        Stops the key at once. Requests that wait for this key are cancelled and each sends a `disclosure.cancelled` event. Use it when a key may have leaked.
+      parameters:
+        - name: kid
+          in: path
+          required: true
+          description: The key id, such as `dk_...`.
+          schema: { type: string }
+      responses:
+        '200':
+          description: The retired key.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DisclosureKey' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /disclosures:
+    get:
+      tags: [Disclosures]
+      operationId: listDisclosures
+      summary: List disclosure requests
+      description: |
+        Newest first, in this mode. `status` narrows the list. A pending request whose time has passed is shown as `expired`.
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [pending, approved, rejected, cancelled, expired] } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: starting_after, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: A page of requests.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DisclosurePage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [Disclosures]
+      operationId: createDisclosure
+      summary: Ask for a disclosure
+      description: |
+        Asks one customer to let you see named keys of one of their records. Name the customer, the record, or both (see the request body). Send the fingerprint of your disclosure key (`disclosure_key_fingerprint`, 64 hexadecimal characters). It must match a key registered in this mode, so a wrong setting on your server is found here and not by your customer.
+        Then start a session with the `approve` purpose and the id of this request. **Add your disclosure key's fingerprint to the link's fragment before you send the customer there** (`<link>&fp=<fingerprint>`; the SDKs have `ApproveURL`): the fingerprint comes from your own app configuration, not from the vault, and the hosted page stops the request if the key it receives does not match it. You see nothing until the customer approves; then fetch the envelope with `GET /disclosures/{id}/envelope`. The request lives 15 minutes unless you send `expires_in` (60 to 259200 seconds).
+        A live request is refused with `402` when live mode is paused because a payment failed. Disclosures are never billed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDisclosure' }
+      responses:
+        '201':
+          description: The request.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Disclosure' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '402': { $ref: '#/components/responses/PaymentRequired' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /disclosures/{id}:
+    get:
+      tags: [Disclosures]
+      operationId: getDisclosure
+      summary: Get a disclosure request
+      description: |
+        Returns the request if it belongs to your organization and the mode.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The disclosure request id, such as `dsc_...`.
+          schema: { type: string }
+      responses:
+        '200':
+          description: The request.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Disclosure' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /disclosures/{id}/cancel:
+    post:
+      tags: [Disclosures]
+      operationId: cancelDisclosure
+      summary: Cancel a disclosure request
+      description: |
+        Stops a request that still waits for the customer. A request that was decided or has expired cannot be cancelled.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The disclosure request id, such as `dsc_...`.
+          schema: { type: string }
+      responses:
+        '200':
+          description: The cancelled request.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Disclosure' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /disclosures/{id}/envelope:
+    get:
+      tags: [Disclosures]
+      operationId: getDisclosureEnvelope
+      summary: Fetch the sealed values of an approved request
+      description: |
+        Returns the envelope the customer's device made: the approved values, sealed to your disclosure key and signed with the customer's
+        signing key. Open it with the SDK (`OpenEnvelope`), which checks the signature, the request, the business, the customer and the key
+        before it opens anything. Then call `ack`.
+
+        You have 15 minutes after the customer approves. After that, or after you acknowledge, the vault deletes the envelope
+        (`410 envelope_expired`, `410 envelope_acknowledged`). A request that is pending, rejected, cancelled or expired has no envelope (`409`).
+        The answer must not be stored by a cache or a proxy.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The disclosure request id, such as `dsc_...`.
+          schema: { type: string }
+      responses:
+        '200':
+          description: The envelope.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/PaymentRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '410':
+          description: The envelope was acknowledged, or was not fetched in time, and the vault deleted it.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /disclosures/{id}/ack:
+    post:
+      tags: [Disclosures]
+      operationId: acknowledgeDisclosure
+      summary: Acknowledge an envelope
+      description: |
+        Tells the vault that you have the envelope and opened it. The vault deletes the envelope. It is safe to call twice.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The disclosure request id, such as `dsc_...`.
+          schema: { type: string }
+      responses:
+        '200':
+          description: The request, with `acked_at` set.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Disclosure' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '410':
+          description: The envelope was not fetched in time and the vault deleted it.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /sessions:
+    post:
+      tags: [Sessions]
+      operationId: createSession
+      summary: Start a session
+      description: |
+        Starts one visit of a customer to the vault. Send the customer to the `url` in the answer. The link is shown **once** and works for 15 minutes, once.
+        
+        **Purposes.** `enrol` (the customer is not enrolled yet), and for an enrolled customer: `entry` and `view` (give either a `template` or a list of `keys`), `approve` (give a `disclosure`), `recover`, `recovery_settings`, `reset` and `delete`.
+        
+        **Return.** `return_url` must be exactly one of the addresses you registered in the console for this key's mode (test or live). When the visit ends the vault sends the customer back to it, adding `?session=<id>&state=<your state>`. `state` is required: give a value you can tie to your signed-in user. When the customer returns, **do not trust the address**: fetch the session (`GET /sessions/{id}`) or use a webhook to learn what happened.
+        
+        Key names are stored without encryption. A name that points at something sensitive is kept but listed in `warnings`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSession' }
+      responses:
+        '201':
+          description: The session, with its link.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/PaymentRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /sessions/{id}:
+    get:
+      tags: [Sessions]
+      operationId: getSession
+      summary: Get a session
+      description: |
+        Where a visit stands: `created`, `exchanged` (the vault page opened it), `completed`, `cancelled` or `expired`. The link is never shown again. This is how you confirm the result after the customer returns.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The session id, such as `ses_...`.
+          schema: { type: string }
+      responses:
+        '200':
+          description: The session.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /templates:
+    get:
+      tags: [Templates]
+      operationId: listTemplates
+      summary: List key templates
+      description: |
+        Named lists of keys you ask for again and again.
+      responses:
+        '200':
+          description: The templates.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TemplateList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [Templates]
+      operationId: createTemplate
+      summary: Create a key template
+      description: |
+        The name is 1 to 64 lower-case letters, digits, dashes or underscores. Up to 50 keys. Types: `text`, `number`, `date`, `email`, `phone`, `file` (default `text`). An organization can have 50 templates.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Template' }
+      responses:
+        '201':
+          description: The template.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Template' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /templates/{name}:
+    get:
+      tags: [Templates]
+      operationId: getTemplate
+      summary: Get a key template
+      description: |
+        
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: The template name.
+          schema: { type: string }
+      responses:
+        '200':
+          description: The template.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Template' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    put:
+      tags: [Templates]
+      operationId: replaceTemplate
+      summary: Replace a key template
+      description: |
+        Replaces the keys of an existing template. Sessions already made keep the keys they were made with.
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: The template name.
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Template' }
+      responses:
+        '200':
+          description: The template.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Template' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Templates]
+      operationId: deleteTemplate
+      summary: Delete a key template
+      description: |
+        
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: The template name.
+          schema: { type: string }
+      responses:
+        '204':
+          description: Deleted.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /webhook-endpoints:
+    post:
+      tags: [Webhooks]
+      operationId: createWebhookEndpoint
+      summary: Create a webhook endpoint
+      description: |
+        Makes an endpoint in the key's mode. The signing secret (`whsec_...`) is in the answer **once**: store it. The URL must use https on port 443 and a public DNS name. These are refused: IP addresses, `localhost`, internal names (such as `.local`, `.internal`, `.corp`), user names in the URL, fragments, and any name that resolves to a private, loopback, link-local or other non-public address. The name is checked again at every delivery. Name the events you want, or `*` for all. Up to 10 endpoints per mode.
+        
+        **Verify every delivery.** Each request has a header `Custodian-Signature: t=<unix seconds>,v1=<hex>`. Compute `HMAC-SHA256(secret, t + "." + raw body)`, compare it with `v1` in constant time, and refuse a request whose `t` is more than 5 minutes from your clock. The SDKs do this for you.
+        
+        Answer with any 2xx quickly. Anything else, or no answer within 10 seconds, is retried with growing waits for up to 3 days. The same event can arrive more than once: use `id` to ignore repeats.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWebhookEndpoint' }
+      responses:
+        '201':
+          description: The endpoint, with its secret.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookEndpoint' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    get:
+      tags: [Webhooks]
+      operationId: listWebhookEndpoints
+      summary: List webhook endpoints
+      description: |
+        The endpoints of the key's mode, without secrets.
+      responses:
+        '200':
+          description: The endpoints.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookEndpointList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /webhook-endpoints/{id}:
+    put:
+      tags: [Webhooks]
+      operationId: updateWebhookEndpoint
+      summary: Change a webhook endpoint
+      description: |
+        Send only what changes: `url`, `events` or `status` (`enabled` or `disabled`). A disabled endpoint gets no new events, and jobs waiting for it end.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The endpoint id, such as `we_...`.
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateWebhookEndpoint' }
+      responses:
+        '200':
+          description: The endpoint.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookEndpoint' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Webhooks]
+      operationId: deleteWebhookEndpoint
+      summary: Delete a webhook endpoint
+      description: |
+        Jobs still waiting for it end on their next try.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The endpoint id.
+          schema: { type: string }
+      responses:
+        '204':
+          description: Deleted.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /webhook-endpoints/{id}/rotate-secret:
+    post:
+      tags: [Webhooks]
+      operationId: rotateWebhookSecret
+      summary: Replace the signing secret
+      description: |
+        The old secret stops working at once, including for deliveries already waiting. The new one is in the answer once.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The endpoint id.
+          schema: { type: string }
+      responses:
+        '200':
+          description: The endpoint, with its new secret.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookEndpoint' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /webhook-deliveries:
+    get:
+      tags: [Webhooks]
+      operationId: listWebhookDeliveries
+      summary: List webhook deliveries
+      description: |
+        The delivery log of the key's mode, newest first. `status` is `pending`, `retrying`, `delivered` or `failed`.
+      parameters:
+        - { name: endpoint, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: starting_after, in: query, description: The id of the last delivery you received., schema: { type: integer } }
+      responses:
+        '200':
+          description: A page of deliveries.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookDeliveryList' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /webhook-deliveries/{id}/retry:
+    post:
+      tags: [Webhooks]
+      operationId: retryWebhookDelivery
+      summary: Retry a delivery now
+      description: |
+        Makes a waiting or failed delivery ready at once. A delivery that used all its tries gets one more.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The delivery id.
+          schema: { type: integer }
+      responses:
+        '202':
+          description: Queued to retry.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /usage:
+    get:
+      tags: [Usage]
+      operationId: getUsage
+      summary: Usage in a period
+      description: |
+        Counted on request from your data, in the key's mode. Customers and records are totals at the end of the period. Sessions and disclosures are those created in it. The default period is this month so far.
+      parameters:
+        - { name: from, in: query, description: Start of the period, RFC 3339., schema: { type: string, format: date-time } }
+        - { name: to, in: query, description: End of the period (not included), RFC 3339., schema: { type: string, format: date-time } }
+      responses:
+        '200':
+          description: Done.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /audit-events:
+    get:
+      tags: [Usage]
+      operationId: listAuditEvents
+      summary: The audit log
+      description: |
+        Every change made to your organization's settings, keys, templates and webhooks, newest first, with who made it. The log is for the mode of your key. A change to the whole organization shows in both modes. The log is append-only and each entry is chained to the one before it. Values and secrets are never in it.
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: starting_after, in: query, description: The id of the last event you received., schema: { type: integer } }
+        - { name: type, in: query, description: One event type, such as `api_key.created`., schema: { type: string } }
+        - { name: actor, in: query, schema: { type: string, enum: [member, api_key] } }
+        - { name: from, in: query, description: Events at or after this time (RFC 3339)., schema: { type: string, format: date-time } }
+        - { name: to, in: query, description: Events before this time (RFC 3339)., schema: { type: string, format: date-time } }
+        - { name: q, in: query, description: "Matches a member's email, a key id, or text in the event. Up to 100 characters.", schema: { type: string, maxLength: 100 } }
+      responses:
+        '200':
+          description: Done.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuditEventList' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+components:
+  securitySchemes:
+    apiKey:
+      type: http
+      scheme: bearer
+      description: An API key from the console, `cdv_test_...` or `cdv_live_...`.
+
+  schemas:
+    Usage:
+      type: object
+      properties:
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        livemode: { type: boolean }
+        customers: { type: integer }
+        enrolled_customers: { type: integer }
+        records: { type: integer }
+        sessions: { type: integer }
+        disclosures: { type: integer }
+        new_customers_7d: { type: integer, description: Customers created in the 7 days before the end of the period. }
+        pending_disclosures: { type: integer, description: Disclosure requests that are still waiting for a customer now. }
+    AuditEvent:
+      type: object
+      properties:
+        id: { type: integer }
+        type: { type: string, example: api_key.created }
+        occurred_at: { type: string, format: date-time }
+        user: { type: string, description: The member who made the change, for a console change. }
+        user_email: { type: string, description: The email of that member. }
+        api_key_label: { type: string, description: "The key that made the change, as its start and last 4 characters, such as `cdv_test_Qa7x…m2Lp`." }
+        livemode: { type: boolean, description: The mode the event belongs to. Missing for a change to the whole organization. }
+        api_key: { type: string, description: The key that made the change, for an API change. }
+        payload: { type: object }
+    AuditEventList:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/AuditEvent' } }
+        total: { type: integer, description: How many events match the filters in all, not only on this page. }
+    CreateWebhookEndpoint:
+      type: object
+      required: [url, events]
+      properties:
+        url: { type: string, example: https://example.com/custodian/webhook }
+        events: { type: array, items: { $ref: '#/components/schemas/EventType' } }
+    UpdateWebhookEndpoint:
+      type: object
+      properties:
+        url: { type: string }
+        events: { type: array, items: { $ref: '#/components/schemas/EventType' } }
+        status: { type: string, enum: [enabled, disabled] }
+    EventType:
+      type: string
+      enum: ["*", session.completed, session.cancelled, session.expired, customer.enrolled, customer.reset, customer.deleted, customer.recovery_status_changed, record.created, record.updated, record.deleted, disclosure.requested, disclosure.approved, disclosure.rejected, disclosure.cancelled, disclosure.expired, disclosure.check_failed, recovery.action_required, recovery.holder_declined]
+    WebhookEndpoint:
+      type: object
+      properties:
+        id: { type: string, example: we_0f8a1c2d3e4f5a6b7c8d9e0f1a2b3c4d }
+        url: { type: string }
+        events: { type: array, items: { type: string } }
+        livemode: { type: boolean }
+        status: { type: string, enum: [enabled, disabled] }
+        created_at: { type: string, format: date-time }
+        secret: { type: string, description: The signing secret. Only when the endpoint is made or its secret rotated. }
+        secret_last4: { type: string, description: The last 4 characters of the signing secret, to tell secrets apart. }
+        failing_deliveries: { type: integer, description: Events still retrying, plus events that gave up in the last 24 hours. Filled in lists. }
+        last_delivery_at: { type: string, format: date-time, description: When the newest event for this endpoint was delivered, gave up, or was queued. Only in lists. }
+    WebhookEndpointList:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/WebhookEndpoint' } }
+    WebhookDelivery:
+      type: object
+      properties:
+        id: { type: integer }
+        endpoint: { type: string }
+        event: { type: string, description: The event id. }
+        type: { type: string }
+        status: { type: string, enum: [pending, retrying, delivered, failed] }
+        attempts: { type: integer }
+        max_attempts: { type: integer, description: How many tries the delivery gets before it gives up. }
+        next_retry_at: { type: string, format: date-time, description: When the next try is due. Only while the delivery is pending or retrying. }
+        last_status: { type: integer, description: The last HTTP status your server answered. }
+        last_error: { type: string }
+        created_at: { type: string, format: date-time }
+        completed_at: { type: string, format: date-time }
+    WebhookDeliveryList:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/WebhookDelivery' } }
+    Event:
+      type: object
+      description: The body of every webhook request. It carries metadata only, never a value, a key or a link.
+      properties:
+        id: { type: string, example: evt_0f8a1c2d3e4f5a6b7c8d9e0f1a2b3c4d }
+        type: { $ref: '#/components/schemas/EventType' }
+        created: { type: integer, description: Unix seconds. }
+        livemode: { type: boolean }
+        data:
+          type: object
+          properties:
+            object: { type: object, description: The thing that changed, as the API shows it. }
+    RegisterDisclosureKey:
+      type: object
+      required: [name, suite, public_key]
+      properties:
+        name: { type: string, maxLength: 80, example: Signing key 2 }
+        suite: { type: string, enum: [cdv1-xwing-hkdf256-aes256gcm, cdv1-x25519-hkdf256-aes256gcm] }
+        public_key: { type: string, description: The raw public key, base64 encoded. }
+    DisclosureKey:
+      type: object
+      properties:
+        id: { type: string, example: dk_0f8a1c2d3e4f5a6b7c8d9e0f1a2b3c4d }
+        name: { type: string }
+        suite: { type: string }
+        public_key: { type: string }
+        fingerprint: { type: string, description: 64 lowercase hexadecimal characters. Keep it in your app config. It is not a secret. }
+        fingerprint_short: { type: string, description: The first 24 characters in six groups of four, for people to read. }
+        status: { type: string, enum: [active, retiring, retired] }
+        livemode: { type: boolean }
+        registered_at: { type: string, format: date-time }
+        retires_at: { type: [string, 'null'], format: date-time, description: When a retiring key stops working. }
+        retired_at: { type: [string, 'null'], format: date-time }
+    DisclosureKeyList:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/DisclosureKey' } }
+        grace_hours: { type: integer, description: How many hours a replaced key keeps working., example: 72 }
+    CreateDisclosure:
+      type: object
+      required: [keys, reason, disclosure_key_fingerprint]
+      description: Send `record`, `customer`, or both. With both, the record must belong to the customer. With only `customer`, the customer's one record that holds every key is used. If none fits you get `no_matching_record`, and if more than one fits you get `ambiguous_record`.
+      properties:
+        customer: { type: string, example: cus_0f8a1c2d3e4f5a6b7c8d9e0f1a2b3c4d }
+        record: { type: string, example: rec_0f8a1c2d3e4f5a6b7c8d9e0f1a2b3c4d }
+        keys: { type: array, minItems: 1, items: { type: string }, description: The names of the keys you ask for. The record must have each one. }
+        reason: { type: string, maxLength: 280, description: Shown to the customer. }
+        expires_in: { type: integer, minimum: 60, maximum: 259200, default: 900, description: Seconds the request waits for the customer. }
+        disclosure_key_fingerprint: { type: string }
+    Disclosure:
+      type: object
+      properties:
+        id: { type: string, example: dsc_0f8a1c2d3e4f5a6b7c8d9e0f1a2b3c4d }
+        record: { type: string }
+        customer: { type: string }
+        keys: { type: array, items: { type: string } }
+        reason: { type: string }
+        status: { type: string, enum: [pending, approved, rejected, cancelled, expired] }
+        livemode: { type: boolean }
+        disclosure_key: { type: string, description: The id of the key the request was made with. }
+        expires_at: { type: string, format: date-time }
+        decided_at: { type: [string, 'null'], format: date-time }
+        acked_at: { type: [string, 'null'], format: date-time, description: When you acknowledged the envelope. The vault deleted it then. }
+        envelope_ready: { type: boolean, description: True while you can still fetch the envelope. }
+        created_at: { type: string, format: date-time }
+    Envelope:
+      type: object
+      description: |
+        A disclosure, sealed on the customer's device. `enc`, `commit`, `ct` and `sig` are base64url without padding. Use the SDK to open it;
+        the format is in the wire format document of custodian-device-crypto.
+      required: [v, suite, request_id, business_id, customer_id, kid, enc, commit, ct, sig]
+      additionalProperties: false
+      properties:
+        v: { type: integer, enum: [1] }
+        suite: { type: string }
+        request_id: { type: string }
+        business_id: { type: string, description: Your organization's public id. }
+        customer_id: { type: string }
+        kid: { type: string, description: The id of your disclosure key that it was sealed to. }
+        enc: { type: string }
+        commit: { type: string }
+        ct: { type: string }
+        sig: { type: string }
+    DisclosurePage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Disclosure' } }
+        has_more: { type: boolean }
+    CreateCustomer:
+      type: object
+      required: [external_ref]
+      properties:
+        external_ref: { type: string, minLength: 1, maxLength: 255, description: Your own id for this person. One per mode. }
+        first_name: { type: string, minLength: 1, maxLength: 60, description: The name you offer for this person, with `last_name` (both or none). Plain text; control characters are removed. The customer sees it on the enrolment screen and must confirm or correct it before enrolment ends. After that you cannot change it. }
+        last_name: { type: string, minLength: 1, maxLength: 60, description: See `first_name`. }
+    Customer:
+      type: object
+      properties:
+        id: { type: string, example: cus_0f8a1c2d3e4f5a6b7c8d9e0f1a2b3c4d }
+        external_ref: { type: string }
+        livemode: { type: boolean }
+        state: { type: string, enum: [active, reset_enrolment_needed] }
+        enrolled: { type: boolean, description: True once the customer has enrolled in the vault. }
+        first_name: { type: string, description: The name the customer confirmed, or the name you offered until they confirm. }
+        last_name: { type: string }
+        name_confirmed: { type: boolean, description: True once the customer confirmed or corrected the name at enrolment. After that the name cannot be changed through the API. }
+        vault_sign_key: { type: string, description: The customer's public signing key, base64url. The customer signs every disclosure with it. Keep the one from the `customer.enrolled` webhook and check envelopes against that one; do not rely on this field alone. }
+        created_at: { type: string, format: date-time }
+    CustomerPage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Customer' } }
+        has_more: { type: boolean }
+    CreateSession:
+      type: object
+      required: [customer, purpose, return_url, state]
+      properties:
+        customer: { type: string, description: The customer id. }
+        purpose: { type: string, enum: [enrol, entry, view, approve, recover, recovery_settings, reset, delete, holder] }
+        return_url: { type: string, description: Exactly one of your registered return URLs for this mode. }
+        state: { type: string, pattern: '^[A-Za-z0-9._~-]{1,255}$', description: Your own value, returned unchanged. Tie it to your signed-in user. }
+        template: { type: string, description: For entry and view. Use this or keys. }
+        keys: { type: array, items: { $ref: '#/components/schemas/Key' }, description: For entry and view. Use this or template. }
+        record: { type: string, description: 'The record token. A view needs it. An entry may name one to add keys to that record; without it, the entry makes a new record.' }
+        disclosure: { type: string, description: For approve. }
+    Session:
+      type: object
+      properties:
+        id: { type: string, example: ses_0f8a1c2d3e4f5a6b7c8d9e0f1a2b3c4d }
+        customer: { type: string }
+        purpose: { type: string }
+        status: { type: string, enum: [created, exchanged, completed, cancelled, expired] }
+        livemode: { type: boolean }
+        return_url: { type: string }
+        state: { type: string }
+        expires_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        completed_at: { type: string, format: date-time }
+        cancelled_at: { type: string, format: date-time }
+        record: { type: string, description: The record this visit added to or shows. For an entry that makes a new record, it is set when the customer saved. }
+        url: { type: string, description: The link to send the customer to. Only in the answer that creates the session. }
+        warnings: { type: array, items: { type: string } }
+    Key:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$' }
+        label: { type: string, maxLength: 120 }
+        type: { type: string, enum: [text, number, date, email, phone, file], default: text }
+        max_size:
+          type: integer
+          format: int64
+          minimum: 1
+          description: |
+            File keys only. The largest file for this key, in bytes. Leave it out to use your plan's file limit (10 MiB by default).
+            It cannot be larger than your plan's limit, and a file cannot be larger than 1 GiB on any plan. A key that is not a file
+            cannot set a size: every other value is limited by your plan (64 KiB by default). The customer's device checks the size
+            before it encrypts, and the vault checks it again.
+        accept:
+          type: array
+          items: { type: string, enum: [application/pdf, image/jpeg, image/png] }
+          description: |
+            File keys only. The file types this key takes, as MIME types. Leave it out to take every type the server allows
+            (the `VAULT_FILE_ALLOWED_MIME_TYPES` setting). A type the server does not allow is refused with `400 invalid_keys`.
+            The vault cannot read a file, so the customer's device checks the type from the first bytes of the file.
+            Check the type again when you open a disclosed file.
+    KeySummary:
+      type: object
+      properties:
+        name: { type: string }
+        label: { type: string }
+        type: { type: string }
+        version: { type: integer, description: How many times the value was saved. }
+        updated_at: { type: string, format: date-time }
+    Record:
+      type: object
+      properties:
+        token: { type: string, example: rec_0f8a1c2d3e4f5a6b7c8d9e0f1a2b3c4d }
+        customer: { type: string }
+        version: { type: integer }
+        keys: { type: array, items: { $ref: '#/components/schemas/KeySummary' } }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    RecordPage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Record' } }
+        has_more: { type: boolean }
+    Template:
+      type: object
+      required: [name, keys]
+      properties:
+        name: { type: string, pattern: '^[a-z0-9][a-z0-9_-]{0,63}$' }
+        keys: { type: array, items: { $ref: '#/components/schemas/Key' }, maxItems: 50 }
+        warnings: { type: array, items: { type: string } }
+    TemplateList:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Template' } }
+    RecoveryPolicy:
+      type: object
+      required: [recovery_threshold]
+      properties:
+        recovery_threshold: { type: integer, minimum: 2, maximum: 10 }
+    Me:
+      type: object
+      required: [organization, name, livemode]
+      properties:
+        organization: { type: string, description: The organization's public id., example: org_abc123 }
+        name: { type: string }
+        livemode: { type: boolean, description: True for a live key, false for a test key. }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [type, code, message]
+          properties:
+            type: { type: string }
+            code: { type: string }
+            message: { type: string }
+            param: { type: string }
+            request_id: { type: string }
+
+  responses:
+    BadRequest:
+      description: The request is not valid. `error.code` and `error.param` say which part.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: No such resource in your organization and this mode.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    PaymentRequired:
+      description: Live mode is closed. The code is `billing_suspended` when a payment failed and the grace period ended, or `billing_payment_required` when the first fee of a plan the business chose is not paid yet. Pay the open invoice in the console.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: The plan does not allow this. For a new test customer the code is `test_customer_cap_reached`.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: The request clashes with the current state, for example a customer that already exists or one that has already enrolled.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: The API key is missing or not valid. A key that was never made and one that was revoked give the same answer.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: { type: authentication_error, code: invalid_api_key, message: The API key is not valid. } }
+    RateLimited:
+      description: Too many requests. Wait for `Retry-After` seconds.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ServerError:
+      description: Something went wrong on our side. Try again.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }

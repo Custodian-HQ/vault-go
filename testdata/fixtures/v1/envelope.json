@@ -1,0 +1,43 @@
+{
+  "aad_utf8": "cus_0123",
+  "envelope_hex": "0101a0a1a2a3a4a5a6a7c0c1c2c3c4c5c6c7c8c9cacb7f1ebac19468c2c3010e4cdf5288e9faaf9c290d360122f5d02e37bf12df8d92d2006b33c9f4d0ab7c54be542e98c80224d10c2211b650c8fb9fdbb13971307025b615546c260e4eff9a03ba228f3adb68b7",
+  "key_hex": "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
+  "key_id_hex": "a0a1a2a3a4a5a6a7",
+  "label_commit": "cdv/v1/commit",
+  "label_enc": "cdv/v1/enc",
+  "layout": "version(1) suite(1) key_id(8) nonce(12) commitment(32) ciphertext tag(16). enc_key = HKDF(key, info = label_enc || nonce), commitment = HKDF(key, info = label_commit || nonce), AAD of AES-256-GCM = version || suite || key_id || aad",
+  "must_fail": [
+    {
+      "envelope_hex": "0101a1a1a2a3a4a5a6a7c0c1c2c3c4c5c6c7c8c9cacb7f1ebac19468c2c3010e4cdf5288e9faaf9c290d360122f5d02e37bf12df8d92d2006b33c9f4d0ab7c54be542e98c80224d10c2211b650c8fb9fdbb13971307025b615546c260e4eff9a03ba228f3adb68b7",
+      "error": "cannot open",
+      "name": "a changed key id"
+    },
+    {
+      "envelope_hex": "0101a0a1a2a3a4a5a6a7c1c1c2c3c4c5c6c7c8c9cacb7f1ebac19468c2c3010e4cdf5288e9faaf9c290d360122f5d02e37bf12df8d92d2006b33c9f4d0ab7c54be542e98c80224d10c2211b650c8fb9fdbb13971307025b615546c260e4eff9a03ba228f3adb68b7",
+      "error": "key commitment does not match",
+      "name": "a changed nonce"
+    },
+    {
+      "envelope_hex": "0101a0a1a2a3a4a5a6a7c0c1c2c3c4c5c6c7c8c9cacb7e1ebac19468c2c3010e4cdf5288e9faaf9c290d360122f5d02e37bf12df8d92d2006b33c9f4d0ab7c54be542e98c80224d10c2211b650c8fb9fdbb13971307025b615546c260e4eff9a03ba228f3adb68b7",
+      "error": "key commitment does not match",
+      "name": "a changed commitment"
+    },
+    {
+      "envelope_hex": "0101a0a1a2a3a4a5a6a7c0c1c2c3c4c5c6c7c8c9cacb7f1ebac19468c2c3010e4cdf5288e9faaf9c290d360122f5d02e37bf12df8d92d3006b33c9f4d0ab7c54be542e98c80224d10c2211b650c8fb9fdbb13971307025b615546c260e4eff9a03ba228f3adb68b7",
+      "error": "cannot open",
+      "name": "a changed ciphertext"
+    },
+    {
+      "envelope_hex": "0101a0a1a2a3a4a5a6a7c0c1c2c3c4c5c6c7c8c9cacb7f1ebac19468c2c3010e4cdf5288e9faaf9c290d360122f5d02e37bf12df8d92d2006b33c9f4d0ab7c54be542e98c80224d10c2211b650c8fb9fdbb13971307025b615546c260e4eff9a03ba228f3adb68b6",
+      "error": "cannot open",
+      "name": "a changed tag"
+    },
+    {
+      "envelope_hex": "0001a0a1a2a3a4a5a6a7c0c1c2c3c4c5c6c7c8c9cacb7f1ebac19468c2c3010e4cdf5288e9faaf9c290d360122f5d02e37bf12df8d92d2006b33c9f4d0ab7c54be542e98c80224d10c2211b650c8fb9fdbb13971307025b615546c260e4eff9a03ba228f3adb68b7",
+      "error": "not an envelope",
+      "name": "a changed version"
+    }
+  ],
+  "nonce_hex": "c0c1c2c3c4c5c6c7c8c9cacb",
+  "plaintext_utf8": "a value the server must never read"
+}

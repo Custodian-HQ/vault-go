@@ -1,0 +1,26 @@
+{
+  "argon2id": [
+    {
+      "name": "default",
+      "secret_utf8": "correct horse battery staple",
+      "salt_hex": "000102030405060708090a0b0c0d0e0f",
+      "params": {
+        "m": 65536,
+        "t": 3,
+        "p": 1
+      },
+      "key_hex": "0d1a3c6523c8f06e4e0af9c515aa5b5448cfebd6838f2d52c3d8b6ef8ddc3c2e"
+    },
+    {
+      "name": "floor",
+      "secret_utf8": "correct horse battery staple",
+      "salt_hex": "000102030405060708090a0b0c0d0e0f",
+      "params": {
+        "m": 19456,
+        "t": 2,
+        "p": 1
+      },
+      "key_hex": "818259b6310026a8e0dbac5d2e6927abcfdb07b32258fac4f61b18b80f929085"
+    }
+  ]
+}

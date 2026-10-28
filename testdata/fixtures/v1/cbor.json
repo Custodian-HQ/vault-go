@@ -1,0 +1,237 @@
+{
+  "invalid": [
+    {
+      "name": "an indefinite array",
+      "hex": "9f01ff",
+      "reason": "indefinite length"
+    },
+    {
+      "name": "an indefinite map",
+      "hex": "bf616101ff",
+      "reason": "indefinite length"
+    },
+    {
+      "name": "an indefinite text",
+      "hex": "7f6161ff",
+      "reason": "indefinite length"
+    },
+    {
+      "name": "an indefinite byte string",
+      "hex": "5f4101ff",
+      "reason": "indefinite length"
+    },
+    {
+      "name": "0 in two bytes",
+      "hex": "1800",
+      "reason": "not the shortest form"
+    },
+    {
+      "name": "1 in three bytes",
+      "hex": "190001",
+      "reason": "not the shortest form"
+    },
+    {
+      "name": "1 in five bytes",
+      "hex": "1a00000001",
+      "reason": "not the shortest form"
+    },
+    {
+      "name": "1 in nine bytes",
+      "hex": "1b0000000000000001",
+      "reason": "not the shortest form"
+    },
+    {
+      "name": "a one-byte string with a long length",
+      "hex": "580161",
+      "reason": "not the shortest form"
+    },
+    {
+      "name": "a repeated map key",
+      "hex": "a201010102",
+      "reason": "repeated key"
+    },
+    {
+      "name": "map keys out of order",
+      "hex": "a202010102",
+      "reason": "keys not in bytewise order"
+    },
+    {
+      "name": "a tag",
+      "hex": "c100",
+      "reason": "tags are not used"
+    },
+    {
+      "name": "a half float",
+      "hex": "f90000",
+      "reason": "floats are not used"
+    },
+    {
+      "name": "undefined",
+      "hex": "f7",
+      "reason": "simple values other than false, true and null are not used"
+    },
+    {
+      "name": "a negative number below int64",
+      "hex": "3bffffffffffffffff",
+      "reason": "outside int64"
+    },
+    {
+      "name": "an array as a map key",
+      "hex": "a18001",
+      "reason": "map keys are integers or text"
+    },
+    {
+      "name": "invalid UTF-8",
+      "hex": "62fffe",
+      "reason": "text must be UTF-8"
+    },
+    {
+      "name": "bytes after the item",
+      "hex": "0000",
+      "reason": "one item only"
+    },
+    {
+      "name": "nothing",
+      "hex": "",
+      "reason": "empty"
+    },
+    {
+      "name": "a cut-off number",
+      "hex": "18",
+      "reason": "the data ends early"
+    }
+  ],
+  "rule": "RFC 8949 section 4.2 core deterministic encoding, limited to: unsigned and negative integers (int64 range), byte and text strings, arrays, maps with integer or text keys, false, true, null. Maps are sorted by the bytewise order of the encoded keys. Nesting is at most 16 deep.",
+  "valid": [
+    {
+      "name": "zero",
+      "diagnostic": "0",
+      "hex": "00"
+    },
+    {
+      "name": "the largest one-byte form of the head",
+      "diagnostic": "23",
+      "hex": "17"
+    },
+    {
+      "name": "the first two-byte form",
+      "diagnostic": "24",
+      "hex": "1818"
+    },
+    {
+      "name": "255",
+      "diagnostic": "255",
+      "hex": "18ff"
+    },
+    {
+      "name": "256",
+      "diagnostic": "256",
+      "hex": "190100"
+    },
+    {
+      "name": "65535",
+      "diagnostic": "65535",
+      "hex": "19ffff"
+    },
+    {
+      "name": "65536",
+      "diagnostic": "65536",
+      "hex": "1a00010000"
+    },
+    {
+      "name": "4294967295",
+      "diagnostic": "4294967295",
+      "hex": "1affffffff"
+    },
+    {
+      "name": "4294967296",
+      "diagnostic": "4294967296",
+      "hex": "1b0000000100000000"
+    },
+    {
+      "name": "the largest unsigned integer",
+      "diagnostic": "18446744073709551615",
+      "hex": "1bffffffffffffffff"
+    },
+    {
+      "name": "minus one",
+      "diagnostic": "-1",
+      "hex": "20"
+    },
+    {
+      "name": "minus 24",
+      "diagnostic": "-24",
+      "hex": "37"
+    },
+    {
+      "name": "minus 25",
+      "diagnostic": "-25",
+      "hex": "3818"
+    },
+    {
+      "name": "minus 257",
+      "diagnostic": "-257",
+      "hex": "390100"
+    },
+    {
+      "name": "the smallest int64",
+      "diagnostic": "-9223372036854775808",
+      "hex": "3b7fffffffffffffff"
+    },
+    {
+      "name": "an empty byte string",
+      "diagnostic": "h''",
+      "hex": "40"
+    },
+    {
+      "name": "a byte string",
+      "diagnostic": "h'010203'",
+      "hex": "43010203"
+    },
+    {
+      "name": "an empty text",
+      "diagnostic": "\"\"",
+      "hex": "60"
+    },
+    {
+      "name": "text a",
+      "diagnostic": "\"a\"",
+      "hex": "6161"
+    },
+    {
+      "name": "a byte string a, not text",
+      "diagnostic": "h'61'",
+      "hex": "4161"
+    },
+    {
+      "name": "non-ASCII text",
+      "diagnostic": "\"é日本語\"",
+      "hex": "6bc3a9e697a5e69cace8aa9e"
+    },
+    {
+      "name": "an empty array",
+      "diagnostic": "[]",
+      "hex": "80"
+    },
+    {
+      "name": "nested arrays",
+      "diagnostic": "[[], [1]]",
+      "hex": "82808101"
+    },
+    {
+      "name": "an empty map",
+      "diagnostic": "{}",
+      "hex": "a0"
+    },
+    {
+      "name": "keys in the wrong order are sorted",
+      "diagnostic": "{\"b\": 1, \"a\": 2, 10: 3, -1: 4, 1: 5}",
+      "hex": "a501050a032004616102616201"
+    },
+    {
+      "name": "false, true and null",
+      "diagnostic": "[false, true, null]",
+      "hex": "83f4f5f6"
+    }
+  ]
+}

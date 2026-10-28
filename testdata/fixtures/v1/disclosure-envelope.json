@@ -1,0 +1,551 @@
+{
+  "cases": [
+    {
+      "name": "xwing",
+      "suite": "cdv1-xwing-hkdf256-aes256gcm",
+      "business_private_key_hex": "3ea1cf1f7dbd648026be54230764b7dbe989077c3e646ea3093921a4167d7968",
+      "business_public_key_hex": "b97abd928572898601ffc2a68039c12461910dba2ea3346591393e478611c13caefdb50bdb2accfc5a7ffacb03b43a9b8ed8cca087b94380a7b6726cec724d75c3cdbc84c7fcbbc8378bb7057a3ecc70c7824407f32ba9ccaab6ce133c98663ec345cbb944c431f24515718f52809a8ff45ce7199d05106e54982f195b961d82cc054460b8cc855c7a3e59011bfad97c13436cb52074e3e72677a9c587aa0f67268c35c49ebedb9939770c96a6cbe4bca8b9b219cf72c5485ba1afe9b8c6163431fab0f2f2ab0a07abe0d769da66976e18a1ea485e5d467354f54b55652fcaf3c5a7184be69185862ba520878505622f1dd15e159c88388b214562b1cab9a257d743ae41b717e5354633b186846fe55374b1150d650196e9131c58b621fdea85cf025670782243958512f14cf1fcbb3dbc6bba2c171b04651f1ca0992a56395c5faf5459aaf858d257cef3c0971c728469589071704c823b9ee0bb038ce608cd6a5ad76b843b66b586c31cdb5780aa73a6ff852973762d0ec1cbadec006d2b6e90caa1c0ea9939f184d74c75235a6f0bea2c224314fb927ac7587ff9f701551897db207dd1e4acd2565a000b65d89c5062132760c46207664f15dac498521b6834bd2980b3b5274ee3aab95ad74cfb326b66967f62265f62b3bdde77617d6ca28ccb9eb17161b4b71f4bdb1b0691607b15b2bddc6717511ff313b93ce58d573cb837f43a0c2a0d15c00806d7845bd76e624425aaa244353877eb7738a1eaa484213b5aea8a0bd9b0a4404fab748a05f533b86095e57875e5f7205df70453f2480edb86ecb6b3aac5523bfac5b3d5b43757907fb605c9f0a454945e41d0b4a822c3487a963806149a9a185ca817dd1388facccc95491c7241318e90b1d3869f45f1be14430fafaac5ccc388eb4a6deee472dca1afdfe7c6cb58294bcb40f40165edc07f56bb0b0f9440c3035519f213f5c8bbc77ca857cc1ea9f814565920545c7916755c2dc576f8a886b129b6361a46e69418afe155888836a1966d287803b6536912bca77931a337f442b4b12a70d05ebf2c83d6fc02ff3b05b51c60d5060cacaaa51e497493c48f86a66363fc1a76b4045b002d9be4ccd011807b08c6908133d98126d0ca584f3c31e55c2a71e89729da710615739dd73ee594632b102f988163a2f8575cdc672bd3601cf0084bd093fc5c6dfe3987ecfa005d76ce8ea0717fe27f2c142cabc747916877732295fcd7b63411a7d66839c56cb94d0468ec7b2b7f97877a4506999b8037db5116b4c48b7bbadb519d8d61ab5db326d27278b3a315b843c9a2911511fa661ad1862c442142dab2804782a1a07f23fc401f42b013ca6ba4b61aed42b7ef4810afd034f122b3cf4ac6885625daa681ca827c7e1a2f364764ee814a62e3935602c5c58b9531b13183f22f7e73c8776470d40b6545a47eff4ca986819ad58ba4f3cb497dc0073d5cce44621207d35cf53398ad663845b90a05955320704bdf013877ec720bf59933bb11bbd93875441a6430caaf2678b2da4441321d23e88335ea68c125c101d4a25b14981279b7b42453ea1076cf5320ad9c81f3638bfdfa1486c987ec9c4274a4348d53c45e44a88996a609486c644f2e545bc75035cee372a758439cd78e3cf1d6a9d27084dd48a0f225657435b1753bbd6c2f6335e28b6aa132873ae9498e1b36abc20438004fc3e26545f64b",
+      "kid": "dk_xwing_0001",
+      "business_id": "org_0123456789abcdef",
+      "customer_id": "cus_0123456789abcdef0123456789abcdef",
+      "request_id": "dsc_0123456789abcdef0123456789abcdef",
+      "record": "rec_0123456789abcdef0123456789abcdef",
+      "approved_at": 1793000000,
+      "vault_sign_public_key_hex": "2543b92ff1095511476adc8369db6ddc933665a11978dda1404ee1066ca9559d",
+      "keys": [
+        "full_name",
+        "birthday",
+        "note"
+      ],
+      "fields": {
+        "birthday": "1991-03-14",
+        "full_name": "Amina Okafor",
+        "note": "日本語 ñ 🙂 \"quoted\""
+      },
+      "statement_cbor_hex": "a961760162637458d459c2f3a5439093ef7173aef3273c1e6c7e5acabd0f43b9e9e913bee38cf172fc62ccfc9b5bf18e45144dc1261da07cc045dc589ddda4e1c50bfb73efc0cd89742167134d618e9bbc6937136d3016b38361e11c9f75f40f57111a8f0e218b70f92bc8625ff97ad58175000f440365b509811d0a4f7321d824a2667ea94466adb56b8217fa589edfc51ca0f1149288a3f12cb13d9ec029c16655f4f2dac7da9b845f9bd0e663da8b37acf620355a787e1e8b42711bac231682ab1aae9e9aad128951cd2639b58e1a13f78bd4d09666958e1898253463656e63590460e23775ae00dd532882c9578cd316c7300b19abaa807b3b8595af46ca3e29781948971254402275dc4a33969b56c5e731abd983f0ac927dccead984fd2372033ac273265429ba19bddaf21c7c03a8f9c91e875e56abbf96e9de701d4787b52fe41b0b3b6a2bc7d6fefce88a475967c1dad04ab3faa9abcf78cc46ec5f9a4b2b6254e10b627d7d70cd7eb8692ac841eff892ef50be2b52184c574c0a6ec11831f0d32b6dfcde7e13d88bf2b5fc9efbe90148f72c8164e819e2396268ce3926ad10d5b30cbe4d714b5805bff8df3b6561887de000fae07c2ac31f7e51c3dc6bca8f4b0afbd77e72cf83f40186a6f1549da60d56043a2a9aa2302f4de5026d4583bcf75c47247d72313b60b638e07c3e394b3c7e8fc7bbdd074649c8a172372029eff9fed03d9dccbd7acd5f718c32fb22ab1f62e06cab4f97a9ee135ba8df5bcdc4f212b00ef87c2fb40893a783a3809445b6bb1782e210c439ba4d6f350ad66dd195b9a32dfe9c7ad390dba42845be93bc92174eebc0c7f767495563ab8dcbe2ea580e7010178ff35459704fe2cbe3fe08aa2227d11c27c8f6bbeae9f822aae10e5c74038e9cfc62318629c15c0ec2338619d558afddea5bc27c09e2879e5fe513d648ab64a6b4b3bd780e784fb24b357361be9c253af8fd18f340ab800889e0f2f2cae26987ef48bdaf33623d8a08e62bdbcf1171467ae759f8ab20b3ce2fbf85b58115fecc181e1f5abe3756f428609007ebefa63f886b11addc9312de9852e799a1fc6f079db87fd3a02138482b40790db2df270a01d7877305c312409770a8d3d2070c56d6f9e20f98cd271df5f57b9e80ff0f6aabc8dbb786f1931db5fdbbd5c18741c6aed66f50fa8a65df3ef9b5f36097487e12ad72ae7a51cbfab8759d965339162dd61434461d78e17e5b36d8fe38aed714cf2944611883faa479ccd26a7920572745941f1a571a954413bd3bf5874615f43a9d4bf0848bedc3984b1bde91d3742153637bd75646b7dd9f883696a4294cdc62343dd1cda29565430761dbae3d36d8a01e6f9fe43956202e5fc7a320347c40b88b702409aa9984bbaeac0a428b4483ae616b9531661364076f1808b99e6db2d98f8a15c41ab4b8a1821b7215a13a63d586ab5c271733d4d329b2df7b840d56a767809e7a1cfb66c3f1b88043d18a69b0c806aa6fc5d3f18e4b6161eb1e202b19038a8e6081a5d179a9012b457d2237633850c25e4a513ca4ec914a6bc7c4f15039bb1ea93f438fc319261a9c644a3270f93c886610b1bd7dd960e6b880fb2060eead47730866d8204ec640532234cd42846db9cc808ba5ffadd70737d6aa1aeb906de2191da2b86587057dc29d814f111008c602e93557eb6e85a775e6bdf371a8fb3f655e9cdf2286404fa47a65e6115ab070c7f0088bb9642561036aa92cdbcba915cc491916b193c57dd077980053150b78950b2e81f2e9a20ed4f6150756c7f44daae50987bd7d24e3d77a5f35177abd3dd4b1c1023db2a919b61c7f32247aebeda9553ce7d9f3f041b1e77ba27760560323e6b374d79dc800add62aaa6aada4d6c3d8b02a818318636b69646d646b5f7877696e675f30303031657375697465781c636476312d7877696e672d686b64663235362d61657332353667636d66636f6d6d69745820dadf13bb4a6678f230a284939ddfc7550fd3134bc6d9ab16e6b1b18e4eae18ed6a726571756573745f696478246473635f30313233343536373839616263646566303132333435363738396162636465666b627573696e6573735f6964746f72675f303132333435363738396162636465666b637573746f6d65725f696478246375735f3031323334353637383961626364656630313233343536373839616263646566",
+      "envelope": {
+        "v": 1,
+        "suite": "cdv1-xwing-hkdf256-aes256gcm",
+        "request_id": "dsc_0123456789abcdef0123456789abcdef",
+        "business_id": "org_0123456789abcdef",
+        "customer_id": "cus_0123456789abcdef0123456789abcdef",
+        "kid": "dk_xwing_0001",
+        "enc": "4jd1rgDdUyiCyVeM0xbHMAsZq6qAezuFla9Gyj4peBlIlxJUQCJ13EozlptWxecxq9mD8KySfczq2YT9I3IDOsJzJlQpuhm92vIcfAOo-ckeh15Wq7-W6d5wHUeHtS_kGws7aivH1v786IpHWWfB2tBKs_qpq894zEbsX5pLK2JU4QtifX1wzX64aSrIQe_4ku9QvitSGExXTApuwRgx8NMrbfzefhPYi_K1_J776QFI9yyBZOgZ4jliaM45Jq0Q1bMMvk1xS1gFv_jfO2VhiH3gAPrgfCrDH35Rw9xryo9LCvvXfnLPg_QBhqbxVJ2mDVYEOiqaojAvTeUCbUWDvPdcRyR9cjE7YLY44Hw-OUs8fo_Hu90HRknIoXI3ICnv-f7QPZ3MvXrNX3GMMvsiqx9i4GyrT5ep7hNbqN9bzcTyErAO-HwvtAiTp4OjgJRFtrsXguIQxDm6TW81CtZt0ZW5oy3-nHrTkNukKEW-k7ySF07rwMf3Z0lVY6uNy-LqWA5wEBeP81RZcE_iy-P-CKoiJ9EcJ8j2u-rp-CKq4Q5cdAOOnPxiMYYpwVwOwjOGGdVYr93qW8J8CeKHnl_lE9ZIq2SmtLO9eA54T7JLNXNhvpwlOvj9GPNAq4AIieDy8sriaYfvSL2vM2I9igjmK9vPEXFGeudZ-Ksgs84vv4W1gRX-zBgeH1q-N1b0KGCQB-vvpj-IaxGt3JMS3phS55mh_G8Hnbh_06AhOEgrQHkNst8nCgHXh3MFwxJAl3Co09IHDFbW-eIPmM0nHfX1e56A_w9qq8jbt4bxkx21_bvVwYdBxq7Wb1D6imXfPvm182CXSH4SrXKuelHL-rh1nZZTORYt1hQ0Rh144X5bNtj-OK7XFM8pRGEYg_qkeczSankgVydFlB8aVxqVRBO9O_WHRhX0Op1L8ISL7cOYSxvekdN0IVNje9dWRrfdn4g2lqQpTNxiND3RzaKVZUMHYduuPTbYoB5vn-Q5ViAuX8ejIDR8QLiLcCQJqpmEu66sCkKLRIOuYWuVMWYTZAdvGAi5nm2y2Y-KFcQatLihghtyFaE6Y9WGq1wnFzPU0ymy33uEDVanZ4Ceehz7ZsPxuIBD0YppsMgGqm_F0_GOS2Fh6x4gKxkDio5ggaXReakBK0V9IjdjOFDCXkpRPKTskUprx8TxUDm7Hqk_Q4_DGSYanGRKMnD5PIhmELG9fdlg5riA-yBg7q1Hcwhm2CBOxkBTIjTNQoRtucyAi6X_rdcHN9aqGuuQbeIZHaK4ZYcFfcKdgU8REAjGAuk1V-tuhad15r3zcaj7P2VenN8ihkBPpHpl5hFasHDH8AiLuWQlYQNqqSzby6kVzEkZFrGTxX3Qd5gAUxULeJULLoHy6aIO1PYVB1bH9E2q5QmHvX0k49d6XzUXer091LHBAj2yqRm2HH8yJHrr7alVPOfZ8_BBsed7ondgVgMj5rN0153IAK3WKqpqraTWw9iwKoGDGA",
+        "commit": "2t8Tu0pmePIwooSTnd_HVQ_TE0vG2asW5rGxjk6uGO0",
+        "ct": "WcLzpUOQk-9xc67zJzwebH5ayr0PQ7np6RO-44zxcvxizPybW_GORRRNwSYdoHzARdxYnd2k4cUL-3PvwM2JdCFnE01hjpu8aTcTbTAWs4Nh4RyfdfQPVxEajw4hi3D5K8hiX_l61YF1AA9EA2W1CYEdCk9zIdgkomZ-qURmrbVrghf6WJ7fxRyg8RSSiKPxLLE9nsApwWZV9PLax9qbhF-b0OZj2os3rPYgNVp4fh6LQnEbrCMWgqsarp6arRKJUc0mObWOGhP3i9TQlmaVjhiYJTQ",
+        "sig": "qLNWyXFTnb2CSFDAPY8QYuCIzG4yn_A_G9Bs4uExEnciwRoxe5cwVlRHpndLUQhKtx8-Xl2ISgeVgAiDpM91CA"
+      },
+      "refuse": [
+        {
+          "name": "a changed signature",
+          "envelope": {
+            "business_id": "org_0123456789abcdef",
+            "commit": "2t8Tu0pmePIwooSTnd_HVQ_TE0vG2asW5rGxjk6uGO0",
+            "ct": "WcLzpUOQk-9xc67zJzwebH5ayr0PQ7np6RO-44zxcvxizPybW_GORRRNwSYdoHzARdxYnd2k4cUL-3PvwM2JdCFnE01hjpu8aTcTbTAWs4Nh4RyfdfQPVxEajw4hi3D5K8hiX_l61YF1AA9EA2W1CYEdCk9zIdgkomZ-qURmrbVrghf6WJ7fxRyg8RSSiKPxLLE9nsApwWZV9PLax9qbhF-b0OZj2os3rPYgNVp4fh6LQnEbrCMWgqsarp6arRKJUc0mObWOGhP3i9TQlmaVjhiYJTQ",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "enc": "4jd1rgDdUyiCyVeM0xbHMAsZq6qAezuFla9Gyj4peBlIlxJUQCJ13EozlptWxecxq9mD8KySfczq2YT9I3IDOsJzJlQpuhm92vIcfAOo-ckeh15Wq7-W6d5wHUeHtS_kGws7aivH1v786IpHWWfB2tBKs_qpq894zEbsX5pLK2JU4QtifX1wzX64aSrIQe_4ku9QvitSGExXTApuwRgx8NMrbfzefhPYi_K1_J776QFI9yyBZOgZ4jliaM45Jq0Q1bMMvk1xS1gFv_jfO2VhiH3gAPrgfCrDH35Rw9xryo9LCvvXfnLPg_QBhqbxVJ2mDVYEOiqaojAvTeUCbUWDvPdcRyR9cjE7YLY44Hw-OUs8fo_Hu90HRknIoXI3ICnv-f7QPZ3MvXrNX3GMMvsiqx9i4GyrT5ep7hNbqN9bzcTyErAO-HwvtAiTp4OjgJRFtrsXguIQxDm6TW81CtZt0ZW5oy3-nHrTkNukKEW-k7ySF07rwMf3Z0lVY6uNy-LqWA5wEBeP81RZcE_iy-P-CKoiJ9EcJ8j2u-rp-CKq4Q5cdAOOnPxiMYYpwVwOwjOGGdVYr93qW8J8CeKHnl_lE9ZIq2SmtLO9eA54T7JLNXNhvpwlOvj9GPNAq4AIieDy8sriaYfvSL2vM2I9igjmK9vPEXFGeudZ-Ksgs84vv4W1gRX-zBgeH1q-N1b0KGCQB-vvpj-IaxGt3JMS3phS55mh_G8Hnbh_06AhOEgrQHkNst8nCgHXh3MFwxJAl3Co09IHDFbW-eIPmM0nHfX1e56A_w9qq8jbt4bxkx21_bvVwYdBxq7Wb1D6imXfPvm182CXSH4SrXKuelHL-rh1nZZTORYt1hQ0Rh144X5bNtj-OK7XFM8pRGEYg_qkeczSankgVydFlB8aVxqVRBO9O_WHRhX0Op1L8ISL7cOYSxvekdN0IVNje9dWRrfdn4g2lqQpTNxiND3RzaKVZUMHYduuPTbYoB5vn-Q5ViAuX8ejIDR8QLiLcCQJqpmEu66sCkKLRIOuYWuVMWYTZAdvGAi5nm2y2Y-KFcQatLihghtyFaE6Y9WGq1wnFzPU0ymy33uEDVanZ4Ceehz7ZsPxuIBD0YppsMgGqm_F0_GOS2Fh6x4gKxkDio5ggaXReakBK0V9IjdjOFDCXkpRPKTskUprx8TxUDm7Hqk_Q4_DGSYanGRKMnD5PIhmELG9fdlg5riA-yBg7q1Hcwhm2CBOxkBTIjTNQoRtucyAi6X_rdcHN9aqGuuQbeIZHaK4ZYcFfcKdgU8REAjGAuk1V-tuhad15r3zcaj7P2VenN8ihkBPpHpl5hFasHDH8AiLuWQlYQNqqSzby6kVzEkZFrGTxX3Qd5gAUxULeJULLoHy6aIO1PYVB1bH9E2q5QmHvX0k49d6XzUXer091LHBAj2yqRm2HH8yJHrr7alVPOfZ8_BBsed7ondgVgMj5rN0153IAK3WKqpqraTWw9iwKoGDGA",
+            "kid": "dk_xwing_0001",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "sig": "qLNWyXFTnb2CSFDAPY8QYuCIzG4yn_A_G9Bs4uExEncjwRoxe5cwVlRHpndLUQhKtx8-Xl2ISgeVgAiDpM91CA",
+            "suite": "cdv1-xwing-hkdf256-aes256gcm",
+            "v": 1
+          },
+          "error": "signature"
+        },
+        {
+          "name": "a changed enc",
+          "envelope": {
+            "business_id": "org_0123456789abcdef",
+            "commit": "2t8Tu0pmePIwooSTnd_HVQ_TE0vG2asW5rGxjk6uGO0",
+            "ct": "WcLzpUOQk-9xc67zJzwebH5ayr0PQ7np6RO-44zxcvxizPybW_GORRRNwSYdoHzARdxYnd2k4cUL-3PvwM2JdCFnE01hjpu8aTcTbTAWs4Nh4RyfdfQPVxEajw4hi3D5K8hiX_l61YF1AA9EA2W1CYEdCk9zIdgkomZ-qURmrbVrghf6WJ7fxRyg8RSSiKPxLLE9nsApwWZV9PLax9qbhF-b0OZj2os3rPYgNVp4fh6LQnEbrCMWgqsarp6arRKJUc0mObWOGhP3i9TQlmaVjhiYJTQ",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "enc": "4jd1rgDdUyiCyVeM0xbHMAsZq6qAezuFla9Gyj4peBlIlxJUQCJ13EozlptWxecxq9mD8KySfczq2YT9I3IDOsJzJlQpuhm92vIcfAOo-ckeh15Wq7-W6d5wHUeHtS_kGws7aivH1v786IpHWWfB2tBKs_qpq894zEbsX5pLK2JU4QtifX1wzX64aSrIQe_4ku9QvitSGExXTApuwRgx8NMrbfzefhPYi_K1_J776QFI9yyBZOgZ4jliaM45Jq0Q1bMMvk1xS1gFv_jfO2VhiH3gAPrgfCrDH35Rw9xryo9LCvvXfnLPg_QBhqbxVJ2mDVYEOiqaojAvTeUCbUWDvPdcRyR9cjE7YLY44Hw-OUs8fo_Hu90HRknIoXI3ICnv-f7QPZ3MvXrNX3GMMvsiqx9i4GyrT5ep7hNbqN9bzcTyErAO-HwvtAiTp4OjgJRFtrsXguIQxDm6TW81CtZt0ZW5oy3-nHrTkNukKEW-k7ySF07rwMf3Z0lVY6uNy-LqWA5wEBeP81RZcE_iy-P-CKoiJ9EcJ8j2u-rp-CKq4Q5cdAOOnPxiMYYpwVwOwjOGGdVYr93qW8J8CeKHnl_lE9ZIq2SmtLO9eA54T7JLNXNhvpwlOvj9GPNAq4AIieDy8sriaYfvSL2vM2I9igjmK9vPEXFGeudZ-Ksgs84vv4W1gRX-zBgeH1q-N1b0KGCQB-vvpj-IaxGt3JMS3phS55mh_G8Hnbh_06AhOEgrQHkMst8nCgHXh3MFwxJAl3Co09IHDFbW-eIPmM0nHfX1e56A_w9qq8jbt4bxkx21_bvVwYdBxq7Wb1D6imXfPvm182CXSH4SrXKuelHL-rh1nZZTORYt1hQ0Rh144X5bNtj-OK7XFM8pRGEYg_qkeczSankgVydFlB8aVxqVRBO9O_WHRhX0Op1L8ISL7cOYSxvekdN0IVNje9dWRrfdn4g2lqQpTNxiND3RzaKVZUMHYduuPTbYoB5vn-Q5ViAuX8ejIDR8QLiLcCQJqpmEu66sCkKLRIOuYWuVMWYTZAdvGAi5nm2y2Y-KFcQatLihghtyFaE6Y9WGq1wnFzPU0ymy33uEDVanZ4Ceehz7ZsPxuIBD0YppsMgGqm_F0_GOS2Fh6x4gKxkDio5ggaXReakBK0V9IjdjOFDCXkpRPKTskUprx8TxUDm7Hqk_Q4_DGSYanGRKMnD5PIhmELG9fdlg5riA-yBg7q1Hcwhm2CBOxkBTIjTNQoRtucyAi6X_rdcHN9aqGuuQbeIZHaK4ZYcFfcKdgU8REAjGAuk1V-tuhad15r3zcaj7P2VenN8ihkBPpHpl5hFasHDH8AiLuWQlYQNqqSzby6kVzEkZFrGTxX3Qd5gAUxULeJULLoHy6aIO1PYVB1bH9E2q5QmHvX0k49d6XzUXer091LHBAj2yqRm2HH8yJHrr7alVPOfZ8_BBsed7ondgVgMj5rN0153IAK3WKqpqraTWw9iwKoGDGA",
+            "kid": "dk_xwing_0001",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "sig": "qLNWyXFTnb2CSFDAPY8QYuCIzG4yn_A_G9Bs4uExEnciwRoxe5cwVlRHpndLUQhKtx8-Xl2ISgeVgAiDpM91CA",
+            "suite": "cdv1-xwing-hkdf256-aes256gcm",
+            "v": 1
+          },
+          "error": "signature"
+        },
+        {
+          "name": "a changed ciphertext",
+          "envelope": {
+            "business_id": "org_0123456789abcdef",
+            "commit": "2t8Tu0pmePIwooSTnd_HVQ_TE0vG2asW5rGxjk6uGO0",
+            "ct": "WcLzpUOQk-9xc67zJzwebH5ayr0PQ7np6RO-44zxcvxizPybW_GORRRNwSYdoHzARdxYnd2k4cUL-3PvwM2JdCFnE01hjpu8aTcTbTAWs4Nh4RyfdfQPVxEajw4hi3D5K8hiX_l61YF1AA5EA2W1CYEdCk9zIdgkomZ-qURmrbVrghf6WJ7fxRyg8RSSiKPxLLE9nsApwWZV9PLax9qbhF-b0OZj2os3rPYgNVp4fh6LQnEbrCMWgqsarp6arRKJUc0mObWOGhP3i9TQlmaVjhiYJTQ",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "enc": "4jd1rgDdUyiCyVeM0xbHMAsZq6qAezuFla9Gyj4peBlIlxJUQCJ13EozlptWxecxq9mD8KySfczq2YT9I3IDOsJzJlQpuhm92vIcfAOo-ckeh15Wq7-W6d5wHUeHtS_kGws7aivH1v786IpHWWfB2tBKs_qpq894zEbsX5pLK2JU4QtifX1wzX64aSrIQe_4ku9QvitSGExXTApuwRgx8NMrbfzefhPYi_K1_J776QFI9yyBZOgZ4jliaM45Jq0Q1bMMvk1xS1gFv_jfO2VhiH3gAPrgfCrDH35Rw9xryo9LCvvXfnLPg_QBhqbxVJ2mDVYEOiqaojAvTeUCbUWDvPdcRyR9cjE7YLY44Hw-OUs8fo_Hu90HRknIoXI3ICnv-f7QPZ3MvXrNX3GMMvsiqx9i4GyrT5ep7hNbqN9bzcTyErAO-HwvtAiTp4OjgJRFtrsXguIQxDm6TW81CtZt0ZW5oy3-nHrTkNukKEW-k7ySF07rwMf3Z0lVY6uNy-LqWA5wEBeP81RZcE_iy-P-CKoiJ9EcJ8j2u-rp-CKq4Q5cdAOOnPxiMYYpwVwOwjOGGdVYr93qW8J8CeKHnl_lE9ZIq2SmtLO9eA54T7JLNXNhvpwlOvj9GPNAq4AIieDy8sriaYfvSL2vM2I9igjmK9vPEXFGeudZ-Ksgs84vv4W1gRX-zBgeH1q-N1b0KGCQB-vvpj-IaxGt3JMS3phS55mh_G8Hnbh_06AhOEgrQHkNst8nCgHXh3MFwxJAl3Co09IHDFbW-eIPmM0nHfX1e56A_w9qq8jbt4bxkx21_bvVwYdBxq7Wb1D6imXfPvm182CXSH4SrXKuelHL-rh1nZZTORYt1hQ0Rh144X5bNtj-OK7XFM8pRGEYg_qkeczSankgVydFlB8aVxqVRBO9O_WHRhX0Op1L8ISL7cOYSxvekdN0IVNje9dWRrfdn4g2lqQpTNxiND3RzaKVZUMHYduuPTbYoB5vn-Q5ViAuX8ejIDR8QLiLcCQJqpmEu66sCkKLRIOuYWuVMWYTZAdvGAi5nm2y2Y-KFcQatLihghtyFaE6Y9WGq1wnFzPU0ymy33uEDVanZ4Ceehz7ZsPxuIBD0YppsMgGqm_F0_GOS2Fh6x4gKxkDio5ggaXReakBK0V9IjdjOFDCXkpRPKTskUprx8TxUDm7Hqk_Q4_DGSYanGRKMnD5PIhmELG9fdlg5riA-yBg7q1Hcwhm2CBOxkBTIjTNQoRtucyAi6X_rdcHN9aqGuuQbeIZHaK4ZYcFfcKdgU8REAjGAuk1V-tuhad15r3zcaj7P2VenN8ihkBPpHpl5hFasHDH8AiLuWQlYQNqqSzby6kVzEkZFrGTxX3Qd5gAUxULeJULLoHy6aIO1PYVB1bH9E2q5QmHvX0k49d6XzUXer091LHBAj2yqRm2HH8yJHrr7alVPOfZ8_BBsed7ondgVgMj5rN0153IAK3WKqpqraTWw9iwKoGDGA",
+            "kid": "dk_xwing_0001",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "sig": "qLNWyXFTnb2CSFDAPY8QYuCIzG4yn_A_G9Bs4uExEnciwRoxe5cwVlRHpndLUQhKtx8-Xl2ISgeVgAiDpM91CA",
+            "suite": "cdv1-xwing-hkdf256-aes256gcm",
+            "v": 1
+          },
+          "error": "signature"
+        },
+        {
+          "name": "a changed commitment",
+          "envelope": {
+            "business_id": "org_0123456789abcdef",
+            "commit": "2t8Tu0pmePIwooSTnd_HVQ7TE0vG2asW5rGxjk6uGO0",
+            "ct": "WcLzpUOQk-9xc67zJzwebH5ayr0PQ7np6RO-44zxcvxizPybW_GORRRNwSYdoHzARdxYnd2k4cUL-3PvwM2JdCFnE01hjpu8aTcTbTAWs4Nh4RyfdfQPVxEajw4hi3D5K8hiX_l61YF1AA9EA2W1CYEdCk9zIdgkomZ-qURmrbVrghf6WJ7fxRyg8RSSiKPxLLE9nsApwWZV9PLax9qbhF-b0OZj2os3rPYgNVp4fh6LQnEbrCMWgqsarp6arRKJUc0mObWOGhP3i9TQlmaVjhiYJTQ",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "enc": "4jd1rgDdUyiCyVeM0xbHMAsZq6qAezuFla9Gyj4peBlIlxJUQCJ13EozlptWxecxq9mD8KySfczq2YT9I3IDOsJzJlQpuhm92vIcfAOo-ckeh15Wq7-W6d5wHUeHtS_kGws7aivH1v786IpHWWfB2tBKs_qpq894zEbsX5pLK2JU4QtifX1wzX64aSrIQe_4ku9QvitSGExXTApuwRgx8NMrbfzefhPYi_K1_J776QFI9yyBZOgZ4jliaM45Jq0Q1bMMvk1xS1gFv_jfO2VhiH3gAPrgfCrDH35Rw9xryo9LCvvXfnLPg_QBhqbxVJ2mDVYEOiqaojAvTeUCbUWDvPdcRyR9cjE7YLY44Hw-OUs8fo_Hu90HRknIoXI3ICnv-f7QPZ3MvXrNX3GMMvsiqx9i4GyrT5ep7hNbqN9bzcTyErAO-HwvtAiTp4OjgJRFtrsXguIQxDm6TW81CtZt0ZW5oy3-nHrTkNukKEW-k7ySF07rwMf3Z0lVY6uNy-LqWA5wEBeP81RZcE_iy-P-CKoiJ9EcJ8j2u-rp-CKq4Q5cdAOOnPxiMYYpwVwOwjOGGdVYr93qW8J8CeKHnl_lE9ZIq2SmtLO9eA54T7JLNXNhvpwlOvj9GPNAq4AIieDy8sriaYfvSL2vM2I9igjmK9vPEXFGeudZ-Ksgs84vv4W1gRX-zBgeH1q-N1b0KGCQB-vvpj-IaxGt3JMS3phS55mh_G8Hnbh_06AhOEgrQHkNst8nCgHXh3MFwxJAl3Co09IHDFbW-eIPmM0nHfX1e56A_w9qq8jbt4bxkx21_bvVwYdBxq7Wb1D6imXfPvm182CXSH4SrXKuelHL-rh1nZZTORYt1hQ0Rh144X5bNtj-OK7XFM8pRGEYg_qkeczSankgVydFlB8aVxqVRBO9O_WHRhX0Op1L8ISL7cOYSxvekdN0IVNje9dWRrfdn4g2lqQpTNxiND3RzaKVZUMHYduuPTbYoB5vn-Q5ViAuX8ejIDR8QLiLcCQJqpmEu66sCkKLRIOuYWuVMWYTZAdvGAi5nm2y2Y-KFcQatLihghtyFaE6Y9WGq1wnFzPU0ymy33uEDVanZ4Ceehz7ZsPxuIBD0YppsMgGqm_F0_GOS2Fh6x4gKxkDio5ggaXReakBK0V9IjdjOFDCXkpRPKTskUprx8TxUDm7Hqk_Q4_DGSYanGRKMnD5PIhmELG9fdlg5riA-yBg7q1Hcwhm2CBOxkBTIjTNQoRtucyAi6X_rdcHN9aqGuuQbeIZHaK4ZYcFfcKdgU8REAjGAuk1V-tuhad15r3zcaj7P2VenN8ihkBPpHpl5hFasHDH8AiLuWQlYQNqqSzby6kVzEkZFrGTxX3Qd5gAUxULeJULLoHy6aIO1PYVB1bH9E2q5QmHvX0k49d6XzUXer091LHBAj2yqRm2HH8yJHrr7alVPOfZ8_BBsed7ondgVgMj5rN0153IAK3WKqpqraTWw9iwKoGDGA",
+            "kid": "dk_xwing_0001",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "sig": "qLNWyXFTnb2CSFDAPY8QYuCIzG4yn_A_G9Bs4uExEnciwRoxe5cwVlRHpndLUQhKtx8-Xl2ISgeVgAiDpM91CA",
+            "suite": "cdv1-xwing-hkdf256-aes256gcm",
+            "v": 1
+          },
+          "error": "signature"
+        },
+        {
+          "name": "another request id in the envelope",
+          "envelope": {
+            "business_id": "org_0123456789abcdef",
+            "commit": "2t8Tu0pmePIwooSTnd_HVQ_TE0vG2asW5rGxjk6uGO0",
+            "ct": "WcLzpUOQk-9xc67zJzwebH5ayr0PQ7np6RO-44zxcvxizPybW_GORRRNwSYdoHzARdxYnd2k4cUL-3PvwM2JdCFnE01hjpu8aTcTbTAWs4Nh4RyfdfQPVxEajw4hi3D5K8hiX_l61YF1AA9EA2W1CYEdCk9zIdgkomZ-qURmrbVrghf6WJ7fxRyg8RSSiKPxLLE9nsApwWZV9PLax9qbhF-b0OZj2os3rPYgNVp4fh6LQnEbrCMWgqsarp6arRKJUc0mObWOGhP3i9TQlmaVjhiYJTQ",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "enc": "4jd1rgDdUyiCyVeM0xbHMAsZq6qAezuFla9Gyj4peBlIlxJUQCJ13EozlptWxecxq9mD8KySfczq2YT9I3IDOsJzJlQpuhm92vIcfAOo-ckeh15Wq7-W6d5wHUeHtS_kGws7aivH1v786IpHWWfB2tBKs_qpq894zEbsX5pLK2JU4QtifX1wzX64aSrIQe_4ku9QvitSGExXTApuwRgx8NMrbfzefhPYi_K1_J776QFI9yyBZOgZ4jliaM45Jq0Q1bMMvk1xS1gFv_jfO2VhiH3gAPrgfCrDH35Rw9xryo9LCvvXfnLPg_QBhqbxVJ2mDVYEOiqaojAvTeUCbUWDvPdcRyR9cjE7YLY44Hw-OUs8fo_Hu90HRknIoXI3ICnv-f7QPZ3MvXrNX3GMMvsiqx9i4GyrT5ep7hNbqN9bzcTyErAO-HwvtAiTp4OjgJRFtrsXguIQxDm6TW81CtZt0ZW5oy3-nHrTkNukKEW-k7ySF07rwMf3Z0lVY6uNy-LqWA5wEBeP81RZcE_iy-P-CKoiJ9EcJ8j2u-rp-CKq4Q5cdAOOnPxiMYYpwVwOwjOGGdVYr93qW8J8CeKHnl_lE9ZIq2SmtLO9eA54T7JLNXNhvpwlOvj9GPNAq4AIieDy8sriaYfvSL2vM2I9igjmK9vPEXFGeudZ-Ksgs84vv4W1gRX-zBgeH1q-N1b0KGCQB-vvpj-IaxGt3JMS3phS55mh_G8Hnbh_06AhOEgrQHkNst8nCgHXh3MFwxJAl3Co09IHDFbW-eIPmM0nHfX1e56A_w9qq8jbt4bxkx21_bvVwYdBxq7Wb1D6imXfPvm182CXSH4SrXKuelHL-rh1nZZTORYt1hQ0Rh144X5bNtj-OK7XFM8pRGEYg_qkeczSankgVydFlB8aVxqVRBO9O_WHRhX0Op1L8ISL7cOYSxvekdN0IVNje9dWRrfdn4g2lqQpTNxiND3RzaKVZUMHYduuPTbYoB5vn-Q5ViAuX8ejIDR8QLiLcCQJqpmEu66sCkKLRIOuYWuVMWYTZAdvGAi5nm2y2Y-KFcQatLihghtyFaE6Y9WGq1wnFzPU0ymy33uEDVanZ4Ceehz7ZsPxuIBD0YppsMgGqm_F0_GOS2Fh6x4gKxkDio5ggaXReakBK0V9IjdjOFDCXkpRPKTskUprx8TxUDm7Hqk_Q4_DGSYanGRKMnD5PIhmELG9fdlg5riA-yBg7q1Hcwhm2CBOxkBTIjTNQoRtucyAi6X_rdcHN9aqGuuQbeIZHaK4ZYcFfcKdgU8REAjGAuk1V-tuhad15r3zcaj7P2VenN8ihkBPpHpl5hFasHDH8AiLuWQlYQNqqSzby6kVzEkZFrGTxX3Qd5gAUxULeJULLoHy6aIO1PYVB1bH9E2q5QmHvX0k49d6XzUXer091LHBAj2yqRm2HH8yJHrr7alVPOfZ8_BBsed7ondgVgMj5rN0153IAK3WKqpqraTWw9iwKoGDGA",
+            "kid": "dk_xwing_0001",
+            "request_id": "dsc_ffffffffffffffffffffffffffffffff",
+            "sig": "qLNWyXFTnb2CSFDAPY8QYuCIzG4yn_A_G9Bs4uExEnciwRoxe5cwVlRHpndLUQhKtx8-Xl2ISgeVgAiDpM91CA",
+            "suite": "cdv1-xwing-hkdf256-aes256gcm",
+            "v": 1
+          },
+          "error": "request"
+        },
+        {
+          "name": "another business expected",
+          "envelope": {
+            "v": 1,
+            "suite": "cdv1-xwing-hkdf256-aes256gcm",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "business_id": "org_0123456789abcdef",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "kid": "dk_xwing_0001",
+            "enc": "4jd1rgDdUyiCyVeM0xbHMAsZq6qAezuFla9Gyj4peBlIlxJUQCJ13EozlptWxecxq9mD8KySfczq2YT9I3IDOsJzJlQpuhm92vIcfAOo-ckeh15Wq7-W6d5wHUeHtS_kGws7aivH1v786IpHWWfB2tBKs_qpq894zEbsX5pLK2JU4QtifX1wzX64aSrIQe_4ku9QvitSGExXTApuwRgx8NMrbfzefhPYi_K1_J776QFI9yyBZOgZ4jliaM45Jq0Q1bMMvk1xS1gFv_jfO2VhiH3gAPrgfCrDH35Rw9xryo9LCvvXfnLPg_QBhqbxVJ2mDVYEOiqaojAvTeUCbUWDvPdcRyR9cjE7YLY44Hw-OUs8fo_Hu90HRknIoXI3ICnv-f7QPZ3MvXrNX3GMMvsiqx9i4GyrT5ep7hNbqN9bzcTyErAO-HwvtAiTp4OjgJRFtrsXguIQxDm6TW81CtZt0ZW5oy3-nHrTkNukKEW-k7ySF07rwMf3Z0lVY6uNy-LqWA5wEBeP81RZcE_iy-P-CKoiJ9EcJ8j2u-rp-CKq4Q5cdAOOnPxiMYYpwVwOwjOGGdVYr93qW8J8CeKHnl_lE9ZIq2SmtLO9eA54T7JLNXNhvpwlOvj9GPNAq4AIieDy8sriaYfvSL2vM2I9igjmK9vPEXFGeudZ-Ksgs84vv4W1gRX-zBgeH1q-N1b0KGCQB-vvpj-IaxGt3JMS3phS55mh_G8Hnbh_06AhOEgrQHkNst8nCgHXh3MFwxJAl3Co09IHDFbW-eIPmM0nHfX1e56A_w9qq8jbt4bxkx21_bvVwYdBxq7Wb1D6imXfPvm182CXSH4SrXKuelHL-rh1nZZTORYt1hQ0Rh144X5bNtj-OK7XFM8pRGEYg_qkeczSankgVydFlB8aVxqVRBO9O_WHRhX0Op1L8ISL7cOYSxvekdN0IVNje9dWRrfdn4g2lqQpTNxiND3RzaKVZUMHYduuPTbYoB5vn-Q5ViAuX8ejIDR8QLiLcCQJqpmEu66sCkKLRIOuYWuVMWYTZAdvGAi5nm2y2Y-KFcQatLihghtyFaE6Y9WGq1wnFzPU0ymy33uEDVanZ4Ceehz7ZsPxuIBD0YppsMgGqm_F0_GOS2Fh6x4gKxkDio5ggaXReakBK0V9IjdjOFDCXkpRPKTskUprx8TxUDm7Hqk_Q4_DGSYanGRKMnD5PIhmELG9fdlg5riA-yBg7q1Hcwhm2CBOxkBTIjTNQoRtucyAi6X_rdcHN9aqGuuQbeIZHaK4ZYcFfcKdgU8REAjGAuk1V-tuhad15r3zcaj7P2VenN8ihkBPpHpl5hFasHDH8AiLuWQlYQNqqSzby6kVzEkZFrGTxX3Qd5gAUxULeJULLoHy6aIO1PYVB1bH9E2q5QmHvX0k49d6XzUXer091LHBAj2yqRm2HH8yJHrr7alVPOfZ8_BBsed7ondgVgMj5rN0153IAK3WKqpqraTWw9iwKoGDGA",
+            "commit": "2t8Tu0pmePIwooSTnd_HVQ_TE0vG2asW5rGxjk6uGO0",
+            "ct": "WcLzpUOQk-9xc67zJzwebH5ayr0PQ7np6RO-44zxcvxizPybW_GORRRNwSYdoHzARdxYnd2k4cUL-3PvwM2JdCFnE01hjpu8aTcTbTAWs4Nh4RyfdfQPVxEajw4hi3D5K8hiX_l61YF1AA9EA2W1CYEdCk9zIdgkomZ-qURmrbVrghf6WJ7fxRyg8RSSiKPxLLE9nsApwWZV9PLax9qbhF-b0OZj2os3rPYgNVp4fh6LQnEbrCMWgqsarp6arRKJUc0mObWOGhP3i9TQlmaVjhiYJTQ",
+            "sig": "qLNWyXFTnb2CSFDAPY8QYuCIzG4yn_A_G9Bs4uExEnciwRoxe5cwVlRHpndLUQhKtx8-Xl2ISgeVgAiDpM91CA"
+          },
+          "expected_override": {
+            "business_id": "org_ffffffffffffffff"
+          },
+          "error": "business"
+        },
+        {
+          "name": "another customer expected",
+          "envelope": {
+            "v": 1,
+            "suite": "cdv1-xwing-hkdf256-aes256gcm",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "business_id": "org_0123456789abcdef",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "kid": "dk_xwing_0001",
+            "enc": "4jd1rgDdUyiCyVeM0xbHMAsZq6qAezuFla9Gyj4peBlIlxJUQCJ13EozlptWxecxq9mD8KySfczq2YT9I3IDOsJzJlQpuhm92vIcfAOo-ckeh15Wq7-W6d5wHUeHtS_kGws7aivH1v786IpHWWfB2tBKs_qpq894zEbsX5pLK2JU4QtifX1wzX64aSrIQe_4ku9QvitSGExXTApuwRgx8NMrbfzefhPYi_K1_J776QFI9yyBZOgZ4jliaM45Jq0Q1bMMvk1xS1gFv_jfO2VhiH3gAPrgfCrDH35Rw9xryo9LCvvXfnLPg_QBhqbxVJ2mDVYEOiqaojAvTeUCbUWDvPdcRyR9cjE7YLY44Hw-OUs8fo_Hu90HRknIoXI3ICnv-f7QPZ3MvXrNX3GMMvsiqx9i4GyrT5ep7hNbqN9bzcTyErAO-HwvtAiTp4OjgJRFtrsXguIQxDm6TW81CtZt0ZW5oy3-nHrTkNukKEW-k7ySF07rwMf3Z0lVY6uNy-LqWA5wEBeP81RZcE_iy-P-CKoiJ9EcJ8j2u-rp-CKq4Q5cdAOOnPxiMYYpwVwOwjOGGdVYr93qW8J8CeKHnl_lE9ZIq2SmtLO9eA54T7JLNXNhvpwlOvj9GPNAq4AIieDy8sriaYfvSL2vM2I9igjmK9vPEXFGeudZ-Ksgs84vv4W1gRX-zBgeH1q-N1b0KGCQB-vvpj-IaxGt3JMS3phS55mh_G8Hnbh_06AhOEgrQHkNst8nCgHXh3MFwxJAl3Co09IHDFbW-eIPmM0nHfX1e56A_w9qq8jbt4bxkx21_bvVwYdBxq7Wb1D6imXfPvm182CXSH4SrXKuelHL-rh1nZZTORYt1hQ0Rh144X5bNtj-OK7XFM8pRGEYg_qkeczSankgVydFlB8aVxqVRBO9O_WHRhX0Op1L8ISL7cOYSxvekdN0IVNje9dWRrfdn4g2lqQpTNxiND3RzaKVZUMHYduuPTbYoB5vn-Q5ViAuX8ejIDR8QLiLcCQJqpmEu66sCkKLRIOuYWuVMWYTZAdvGAi5nm2y2Y-KFcQatLihghtyFaE6Y9WGq1wnFzPU0ymy33uEDVanZ4Ceehz7ZsPxuIBD0YppsMgGqm_F0_GOS2Fh6x4gKxkDio5ggaXReakBK0V9IjdjOFDCXkpRPKTskUprx8TxUDm7Hqk_Q4_DGSYanGRKMnD5PIhmELG9fdlg5riA-yBg7q1Hcwhm2CBOxkBTIjTNQoRtucyAi6X_rdcHN9aqGuuQbeIZHaK4ZYcFfcKdgU8REAjGAuk1V-tuhad15r3zcaj7P2VenN8ihkBPpHpl5hFasHDH8AiLuWQlYQNqqSzby6kVzEkZFrGTxX3Qd5gAUxULeJULLoHy6aIO1PYVB1bH9E2q5QmHvX0k49d6XzUXer091LHBAj2yqRm2HH8yJHrr7alVPOfZ8_BBsed7ondgVgMj5rN0153IAK3WKqpqraTWw9iwKoGDGA",
+            "commit": "2t8Tu0pmePIwooSTnd_HVQ_TE0vG2asW5rGxjk6uGO0",
+            "ct": "WcLzpUOQk-9xc67zJzwebH5ayr0PQ7np6RO-44zxcvxizPybW_GORRRNwSYdoHzARdxYnd2k4cUL-3PvwM2JdCFnE01hjpu8aTcTbTAWs4Nh4RyfdfQPVxEajw4hi3D5K8hiX_l61YF1AA9EA2W1CYEdCk9zIdgkomZ-qURmrbVrghf6WJ7fxRyg8RSSiKPxLLE9nsApwWZV9PLax9qbhF-b0OZj2os3rPYgNVp4fh6LQnEbrCMWgqsarp6arRKJUc0mObWOGhP3i9TQlmaVjhiYJTQ",
+            "sig": "qLNWyXFTnb2CSFDAPY8QYuCIzG4yn_A_G9Bs4uExEnciwRoxe5cwVlRHpndLUQhKtx8-Xl2ISgeVgAiDpM91CA"
+          },
+          "expected_override": {
+            "customer_id": "cus_ffffffffffffffffffffffffffffffff"
+          },
+          "error": "customer"
+        },
+        {
+          "name": "another key id expected",
+          "envelope": {
+            "v": 1,
+            "suite": "cdv1-xwing-hkdf256-aes256gcm",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "business_id": "org_0123456789abcdef",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "kid": "dk_xwing_0001",
+            "enc": "4jd1rgDdUyiCyVeM0xbHMAsZq6qAezuFla9Gyj4peBlIlxJUQCJ13EozlptWxecxq9mD8KySfczq2YT9I3IDOsJzJlQpuhm92vIcfAOo-ckeh15Wq7-W6d5wHUeHtS_kGws7aivH1v786IpHWWfB2tBKs_qpq894zEbsX5pLK2JU4QtifX1wzX64aSrIQe_4ku9QvitSGExXTApuwRgx8NMrbfzefhPYi_K1_J776QFI9yyBZOgZ4jliaM45Jq0Q1bMMvk1xS1gFv_jfO2VhiH3gAPrgfCrDH35Rw9xryo9LCvvXfnLPg_QBhqbxVJ2mDVYEOiqaojAvTeUCbUWDvPdcRyR9cjE7YLY44Hw-OUs8fo_Hu90HRknIoXI3ICnv-f7QPZ3MvXrNX3GMMvsiqx9i4GyrT5ep7hNbqN9bzcTyErAO-HwvtAiTp4OjgJRFtrsXguIQxDm6TW81CtZt0ZW5oy3-nHrTkNukKEW-k7ySF07rwMf3Z0lVY6uNy-LqWA5wEBeP81RZcE_iy-P-CKoiJ9EcJ8j2u-rp-CKq4Q5cdAOOnPxiMYYpwVwOwjOGGdVYr93qW8J8CeKHnl_lE9ZIq2SmtLO9eA54T7JLNXNhvpwlOvj9GPNAq4AIieDy8sriaYfvSL2vM2I9igjmK9vPEXFGeudZ-Ksgs84vv4W1gRX-zBgeH1q-N1b0KGCQB-vvpj-IaxGt3JMS3phS55mh_G8Hnbh_06AhOEgrQHkNst8nCgHXh3MFwxJAl3Co09IHDFbW-eIPmM0nHfX1e56A_w9qq8jbt4bxkx21_bvVwYdBxq7Wb1D6imXfPvm182CXSH4SrXKuelHL-rh1nZZTORYt1hQ0Rh144X5bNtj-OK7XFM8pRGEYg_qkeczSankgVydFlB8aVxqVRBO9O_WHRhX0Op1L8ISL7cOYSxvekdN0IVNje9dWRrfdn4g2lqQpTNxiND3RzaKVZUMHYduuPTbYoB5vn-Q5ViAuX8ejIDR8QLiLcCQJqpmEu66sCkKLRIOuYWuVMWYTZAdvGAi5nm2y2Y-KFcQatLihghtyFaE6Y9WGq1wnFzPU0ymy33uEDVanZ4Ceehz7ZsPxuIBD0YppsMgGqm_F0_GOS2Fh6x4gKxkDio5ggaXReakBK0V9IjdjOFDCXkpRPKTskUprx8TxUDm7Hqk_Q4_DGSYanGRKMnD5PIhmELG9fdlg5riA-yBg7q1Hcwhm2CBOxkBTIjTNQoRtucyAi6X_rdcHN9aqGuuQbeIZHaK4ZYcFfcKdgU8REAjGAuk1V-tuhad15r3zcaj7P2VenN8ihkBPpHpl5hFasHDH8AiLuWQlYQNqqSzby6kVzEkZFrGTxX3Qd5gAUxULeJULLoHy6aIO1PYVB1bH9E2q5QmHvX0k49d6XzUXer091LHBAj2yqRm2HH8yJHrr7alVPOfZ8_BBsed7ondgVgMj5rN0153IAK3WKqpqraTWw9iwKoGDGA",
+            "commit": "2t8Tu0pmePIwooSTnd_HVQ_TE0vG2asW5rGxjk6uGO0",
+            "ct": "WcLzpUOQk-9xc67zJzwebH5ayr0PQ7np6RO-44zxcvxizPybW_GORRRNwSYdoHzARdxYnd2k4cUL-3PvwM2JdCFnE01hjpu8aTcTbTAWs4Nh4RyfdfQPVxEajw4hi3D5K8hiX_l61YF1AA9EA2W1CYEdCk9zIdgkomZ-qURmrbVrghf6WJ7fxRyg8RSSiKPxLLE9nsApwWZV9PLax9qbhF-b0OZj2os3rPYgNVp4fh6LQnEbrCMWgqsarp6arRKJUc0mObWOGhP3i9TQlmaVjhiYJTQ",
+            "sig": "qLNWyXFTnb2CSFDAPY8QYuCIzG4yn_A_G9Bs4uExEnciwRoxe5cwVlRHpndLUQhKtx8-Xl2ISgeVgAiDpM91CA"
+          },
+          "expected_override": {
+            "kid": "dk_other"
+          },
+          "error": "key"
+        },
+        {
+          "name": "a vault-sign key that is not the customer's",
+          "envelope": {
+            "v": 1,
+            "suite": "cdv1-xwing-hkdf256-aes256gcm",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "business_id": "org_0123456789abcdef",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "kid": "dk_xwing_0001",
+            "enc": "4jd1rgDdUyiCyVeM0xbHMAsZq6qAezuFla9Gyj4peBlIlxJUQCJ13EozlptWxecxq9mD8KySfczq2YT9I3IDOsJzJlQpuhm92vIcfAOo-ckeh15Wq7-W6d5wHUeHtS_kGws7aivH1v786IpHWWfB2tBKs_qpq894zEbsX5pLK2JU4QtifX1wzX64aSrIQe_4ku9QvitSGExXTApuwRgx8NMrbfzefhPYi_K1_J776QFI9yyBZOgZ4jliaM45Jq0Q1bMMvk1xS1gFv_jfO2VhiH3gAPrgfCrDH35Rw9xryo9LCvvXfnLPg_QBhqbxVJ2mDVYEOiqaojAvTeUCbUWDvPdcRyR9cjE7YLY44Hw-OUs8fo_Hu90HRknIoXI3ICnv-f7QPZ3MvXrNX3GMMvsiqx9i4GyrT5ep7hNbqN9bzcTyErAO-HwvtAiTp4OjgJRFtrsXguIQxDm6TW81CtZt0ZW5oy3-nHrTkNukKEW-k7ySF07rwMf3Z0lVY6uNy-LqWA5wEBeP81RZcE_iy-P-CKoiJ9EcJ8j2u-rp-CKq4Q5cdAOOnPxiMYYpwVwOwjOGGdVYr93qW8J8CeKHnl_lE9ZIq2SmtLO9eA54T7JLNXNhvpwlOvj9GPNAq4AIieDy8sriaYfvSL2vM2I9igjmK9vPEXFGeudZ-Ksgs84vv4W1gRX-zBgeH1q-N1b0KGCQB-vvpj-IaxGt3JMS3phS55mh_G8Hnbh_06AhOEgrQHkNst8nCgHXh3MFwxJAl3Co09IHDFbW-eIPmM0nHfX1e56A_w9qq8jbt4bxkx21_bvVwYdBxq7Wb1D6imXfPvm182CXSH4SrXKuelHL-rh1nZZTORYt1hQ0Rh144X5bNtj-OK7XFM8pRGEYg_qkeczSankgVydFlB8aVxqVRBO9O_WHRhX0Op1L8ISL7cOYSxvekdN0IVNje9dWRrfdn4g2lqQpTNxiND3RzaKVZUMHYduuPTbYoB5vn-Q5ViAuX8ejIDR8QLiLcCQJqpmEu66sCkKLRIOuYWuVMWYTZAdvGAi5nm2y2Y-KFcQatLihghtyFaE6Y9WGq1wnFzPU0ymy33uEDVanZ4Ceehz7ZsPxuIBD0YppsMgGqm_F0_GOS2Fh6x4gKxkDio5ggaXReakBK0V9IjdjOFDCXkpRPKTskUprx8TxUDm7Hqk_Q4_DGSYanGRKMnD5PIhmELG9fdlg5riA-yBg7q1Hcwhm2CBOxkBTIjTNQoRtucyAi6X_rdcHN9aqGuuQbeIZHaK4ZYcFfcKdgU8REAjGAuk1V-tuhad15r3zcaj7P2VenN8ihkBPpHpl5hFasHDH8AiLuWQlYQNqqSzby6kVzEkZFrGTxX3Qd5gAUxULeJULLoHy6aIO1PYVB1bH9E2q5QmHvX0k49d6XzUXer091LHBAj2yqRm2HH8yJHrr7alVPOfZ8_BBsed7ondgVgMj5rN0153IAK3WKqpqraTWw9iwKoGDGA",
+            "commit": "2t8Tu0pmePIwooSTnd_HVQ_TE0vG2asW5rGxjk6uGO0",
+            "ct": "WcLzpUOQk-9xc67zJzwebH5ayr0PQ7np6RO-44zxcvxizPybW_GORRRNwSYdoHzARdxYnd2k4cUL-3PvwM2JdCFnE01hjpu8aTcTbTAWs4Nh4RyfdfQPVxEajw4hi3D5K8hiX_l61YF1AA9EA2W1CYEdCk9zIdgkomZ-qURmrbVrghf6WJ7fxRyg8RSSiKPxLLE9nsApwWZV9PLax9qbhF-b0OZj2os3rPYgNVp4fh6LQnEbrCMWgqsarp6arRKJUc0mObWOGhP3i9TQlmaVjhiYJTQ",
+            "sig": "qLNWyXFTnb2CSFDAPY8QYuCIzG4yn_A_G9Bs4uExEnciwRoxe5cwVlRHpndLUQhKtx8-Xl2ISgeVgAiDpM91CA"
+          },
+          "expected_override": {
+            "vault_sign_public_key_hex": "174553b456dddfc6908ecab1c101fe6ab21e2baa0617795b7d43a63482993fd5"
+          },
+          "error": "signature"
+        },
+        {
+          "name": "a key list with an extra key",
+          "envelope": {
+            "v": 1,
+            "suite": "cdv1-xwing-hkdf256-aes256gcm",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "business_id": "org_0123456789abcdef",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "kid": "dk_xwing_0001",
+            "enc": "4jd1rgDdUyiCyVeM0xbHMAsZq6qAezuFla9Gyj4peBlIlxJUQCJ13EozlptWxecxq9mD8KySfczq2YT9I3IDOsJzJlQpuhm92vIcfAOo-ckeh15Wq7-W6d5wHUeHtS_kGws7aivH1v786IpHWWfB2tBKs_qpq894zEbsX5pLK2JU4QtifX1wzX64aSrIQe_4ku9QvitSGExXTApuwRgx8NMrbfzefhPYi_K1_J776QFI9yyBZOgZ4jliaM45Jq0Q1bMMvk1xS1gFv_jfO2VhiH3gAPrgfCrDH35Rw9xryo9LCvvXfnLPg_QBhqbxVJ2mDVYEOiqaojAvTeUCbUWDvPdcRyR9cjE7YLY44Hw-OUs8fo_Hu90HRknIoXI3ICnv-f7QPZ3MvXrNX3GMMvsiqx9i4GyrT5ep7hNbqN9bzcTyErAO-HwvtAiTp4OjgJRFtrsXguIQxDm6TW81CtZt0ZW5oy3-nHrTkNukKEW-k7ySF07rwMf3Z0lVY6uNy-LqWA5wEBeP81RZcE_iy-P-CKoiJ9EcJ8j2u-rp-CKq4Q5cdAOOnPxiMYYpwVwOwjOGGdVYr93qW8J8CeKHnl_lE9ZIq2SmtLO9eA54T7JLNXNhvpwlOvj9GPNAq4AIieDy8sriaYfvSL2vM2I9igjmK9vPEXFGeudZ-Ksgs84vv4W1gRX-zBgeH1q-N1b0KGCQB-vvpj-IaxGt3JMS3phS55mh_G8Hnbh_06AhOEgrQHkNst8nCgHXh3MFwxJAl3Co09IHDFbW-eIPmM0nHfX1e56A_w9qq8jbt4bxkx21_bvVwYdBxq7Wb1D6imXfPvm182CXSH4SrXKuelHL-rh1nZZTORYt1hQ0Rh144X5bNtj-OK7XFM8pRGEYg_qkeczSankgVydFlB8aVxqVRBO9O_WHRhX0Op1L8ISL7cOYSxvekdN0IVNje9dWRrfdn4g2lqQpTNxiND3RzaKVZUMHYduuPTbYoB5vn-Q5ViAuX8ejIDR8QLiLcCQJqpmEu66sCkKLRIOuYWuVMWYTZAdvGAi5nm2y2Y-KFcQatLihghtyFaE6Y9WGq1wnFzPU0ymy33uEDVanZ4Ceehz7ZsPxuIBD0YppsMgGqm_F0_GOS2Fh6x4gKxkDio5ggaXReakBK0V9IjdjOFDCXkpRPKTskUprx8TxUDm7Hqk_Q4_DGSYanGRKMnD5PIhmELG9fdlg5riA-yBg7q1Hcwhm2CBOxkBTIjTNQoRtucyAi6X_rdcHN9aqGuuQbeIZHaK4ZYcFfcKdgU8REAjGAuk1V-tuhad15r3zcaj7P2VenN8ihkBPpHpl5hFasHDH8AiLuWQlYQNqqSzby6kVzEkZFrGTxX3Qd5gAUxULeJULLoHy6aIO1PYVB1bH9E2q5QmHvX0k49d6XzUXer091LHBAj2yqRm2HH8yJHrr7alVPOfZ8_BBsed7ondgVgMj5rN0153IAK3WKqpqraTWw9iwKoGDGA",
+            "commit": "2t8Tu0pmePIwooSTnd_HVQ_TE0vG2asW5rGxjk6uGO0",
+            "ct": "WcLzpUOQk-9xc67zJzwebH5ayr0PQ7np6RO-44zxcvxizPybW_GORRRNwSYdoHzARdxYnd2k4cUL-3PvwM2JdCFnE01hjpu8aTcTbTAWs4Nh4RyfdfQPVxEajw4hi3D5K8hiX_l61YF1AA9EA2W1CYEdCk9zIdgkomZ-qURmrbVrghf6WJ7fxRyg8RSSiKPxLLE9nsApwWZV9PLax9qbhF-b0OZj2os3rPYgNVp4fh6LQnEbrCMWgqsarp6arRKJUc0mObWOGhP3i9TQlmaVjhiYJTQ",
+            "sig": "qLNWyXFTnb2CSFDAPY8QYuCIzG4yn_A_G9Bs4uExEnciwRoxe5cwVlRHpndLUQhKtx8-Xl2ISgeVgAiDpM91CA"
+          },
+          "expected_override": {
+            "keys": [
+              "full_name",
+              "birthday",
+              "note",
+              "salary"
+            ]
+          },
+          "error": "payload"
+        },
+        {
+          "name": "a key list with a key missing",
+          "envelope": {
+            "v": 1,
+            "suite": "cdv1-xwing-hkdf256-aes256gcm",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "business_id": "org_0123456789abcdef",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "kid": "dk_xwing_0001",
+            "enc": "4jd1rgDdUyiCyVeM0xbHMAsZq6qAezuFla9Gyj4peBlIlxJUQCJ13EozlptWxecxq9mD8KySfczq2YT9I3IDOsJzJlQpuhm92vIcfAOo-ckeh15Wq7-W6d5wHUeHtS_kGws7aivH1v786IpHWWfB2tBKs_qpq894zEbsX5pLK2JU4QtifX1wzX64aSrIQe_4ku9QvitSGExXTApuwRgx8NMrbfzefhPYi_K1_J776QFI9yyBZOgZ4jliaM45Jq0Q1bMMvk1xS1gFv_jfO2VhiH3gAPrgfCrDH35Rw9xryo9LCvvXfnLPg_QBhqbxVJ2mDVYEOiqaojAvTeUCbUWDvPdcRyR9cjE7YLY44Hw-OUs8fo_Hu90HRknIoXI3ICnv-f7QPZ3MvXrNX3GMMvsiqx9i4GyrT5ep7hNbqN9bzcTyErAO-HwvtAiTp4OjgJRFtrsXguIQxDm6TW81CtZt0ZW5oy3-nHrTkNukKEW-k7ySF07rwMf3Z0lVY6uNy-LqWA5wEBeP81RZcE_iy-P-CKoiJ9EcJ8j2u-rp-CKq4Q5cdAOOnPxiMYYpwVwOwjOGGdVYr93qW8J8CeKHnl_lE9ZIq2SmtLO9eA54T7JLNXNhvpwlOvj9GPNAq4AIieDy8sriaYfvSL2vM2I9igjmK9vPEXFGeudZ-Ksgs84vv4W1gRX-zBgeH1q-N1b0KGCQB-vvpj-IaxGt3JMS3phS55mh_G8Hnbh_06AhOEgrQHkNst8nCgHXh3MFwxJAl3Co09IHDFbW-eIPmM0nHfX1e56A_w9qq8jbt4bxkx21_bvVwYdBxq7Wb1D6imXfPvm182CXSH4SrXKuelHL-rh1nZZTORYt1hQ0Rh144X5bNtj-OK7XFM8pRGEYg_qkeczSankgVydFlB8aVxqVRBO9O_WHRhX0Op1L8ISL7cOYSxvekdN0IVNje9dWRrfdn4g2lqQpTNxiND3RzaKVZUMHYduuPTbYoB5vn-Q5ViAuX8ejIDR8QLiLcCQJqpmEu66sCkKLRIOuYWuVMWYTZAdvGAi5nm2y2Y-KFcQatLihghtyFaE6Y9WGq1wnFzPU0ymy33uEDVanZ4Ceehz7ZsPxuIBD0YppsMgGqm_F0_GOS2Fh6x4gKxkDio5ggaXReakBK0V9IjdjOFDCXkpRPKTskUprx8TxUDm7Hqk_Q4_DGSYanGRKMnD5PIhmELG9fdlg5riA-yBg7q1Hcwhm2CBOxkBTIjTNQoRtucyAi6X_rdcHN9aqGuuQbeIZHaK4ZYcFfcKdgU8REAjGAuk1V-tuhad15r3zcaj7P2VenN8ihkBPpHpl5hFasHDH8AiLuWQlYQNqqSzby6kVzEkZFrGTxX3Qd5gAUxULeJULLoHy6aIO1PYVB1bH9E2q5QmHvX0k49d6XzUXer091LHBAj2yqRm2HH8yJHrr7alVPOfZ8_BBsed7ondgVgMj5rN0153IAK3WKqpqraTWw9iwKoGDGA",
+            "commit": "2t8Tu0pmePIwooSTnd_HVQ_TE0vG2asW5rGxjk6uGO0",
+            "ct": "WcLzpUOQk-9xc67zJzwebH5ayr0PQ7np6RO-44zxcvxizPybW_GORRRNwSYdoHzARdxYnd2k4cUL-3PvwM2JdCFnE01hjpu8aTcTbTAWs4Nh4RyfdfQPVxEajw4hi3D5K8hiX_l61YF1AA9EA2W1CYEdCk9zIdgkomZ-qURmrbVrghf6WJ7fxRyg8RSSiKPxLLE9nsApwWZV9PLax9qbhF-b0OZj2os3rPYgNVp4fh6LQnEbrCMWgqsarp6arRKJUc0mObWOGhP3i9TQlmaVjhiYJTQ",
+            "sig": "qLNWyXFTnb2CSFDAPY8QYuCIzG4yn_A_G9Bs4uExEnciwRoxe5cwVlRHpndLUQhKtx8-Xl2ISgeVgAiDpM91CA"
+          },
+          "expected_override": {
+            "keys": [
+              "full_name",
+              "birthday"
+            ]
+          },
+          "error": "payload"
+        },
+        {
+          "name": "an unknown field",
+          "envelope": {
+            "business_id": "org_0123456789abcdef",
+            "commit": "2t8Tu0pmePIwooSTnd_HVQ_TE0vG2asW5rGxjk6uGO0",
+            "ct": "WcLzpUOQk-9xc67zJzwebH5ayr0PQ7np6RO-44zxcvxizPybW_GORRRNwSYdoHzARdxYnd2k4cUL-3PvwM2JdCFnE01hjpu8aTcTbTAWs4Nh4RyfdfQPVxEajw4hi3D5K8hiX_l61YF1AA9EA2W1CYEdCk9zIdgkomZ-qURmrbVrghf6WJ7fxRyg8RSSiKPxLLE9nsApwWZV9PLax9qbhF-b0OZj2os3rPYgNVp4fh6LQnEbrCMWgqsarp6arRKJUc0mObWOGhP3i9TQlmaVjhiYJTQ",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "enc": "4jd1rgDdUyiCyVeM0xbHMAsZq6qAezuFla9Gyj4peBlIlxJUQCJ13EozlptWxecxq9mD8KySfczq2YT9I3IDOsJzJlQpuhm92vIcfAOo-ckeh15Wq7-W6d5wHUeHtS_kGws7aivH1v786IpHWWfB2tBKs_qpq894zEbsX5pLK2JU4QtifX1wzX64aSrIQe_4ku9QvitSGExXTApuwRgx8NMrbfzefhPYi_K1_J776QFI9yyBZOgZ4jliaM45Jq0Q1bMMvk1xS1gFv_jfO2VhiH3gAPrgfCrDH35Rw9xryo9LCvvXfnLPg_QBhqbxVJ2mDVYEOiqaojAvTeUCbUWDvPdcRyR9cjE7YLY44Hw-OUs8fo_Hu90HRknIoXI3ICnv-f7QPZ3MvXrNX3GMMvsiqx9i4GyrT5ep7hNbqN9bzcTyErAO-HwvtAiTp4OjgJRFtrsXguIQxDm6TW81CtZt0ZW5oy3-nHrTkNukKEW-k7ySF07rwMf3Z0lVY6uNy-LqWA5wEBeP81RZcE_iy-P-CKoiJ9EcJ8j2u-rp-CKq4Q5cdAOOnPxiMYYpwVwOwjOGGdVYr93qW8J8CeKHnl_lE9ZIq2SmtLO9eA54T7JLNXNhvpwlOvj9GPNAq4AIieDy8sriaYfvSL2vM2I9igjmK9vPEXFGeudZ-Ksgs84vv4W1gRX-zBgeH1q-N1b0KGCQB-vvpj-IaxGt3JMS3phS55mh_G8Hnbh_06AhOEgrQHkNst8nCgHXh3MFwxJAl3Co09IHDFbW-eIPmM0nHfX1e56A_w9qq8jbt4bxkx21_bvVwYdBxq7Wb1D6imXfPvm182CXSH4SrXKuelHL-rh1nZZTORYt1hQ0Rh144X5bNtj-OK7XFM8pRGEYg_qkeczSankgVydFlB8aVxqVRBO9O_WHRhX0Op1L8ISL7cOYSxvekdN0IVNje9dWRrfdn4g2lqQpTNxiND3RzaKVZUMHYduuPTbYoB5vn-Q5ViAuX8ejIDR8QLiLcCQJqpmEu66sCkKLRIOuYWuVMWYTZAdvGAi5nm2y2Y-KFcQatLihghtyFaE6Y9WGq1wnFzPU0ymy33uEDVanZ4Ceehz7ZsPxuIBD0YppsMgGqm_F0_GOS2Fh6x4gKxkDio5ggaXReakBK0V9IjdjOFDCXkpRPKTskUprx8TxUDm7Hqk_Q4_DGSYanGRKMnD5PIhmELG9fdlg5riA-yBg7q1Hcwhm2CBOxkBTIjTNQoRtucyAi6X_rdcHN9aqGuuQbeIZHaK4ZYcFfcKdgU8REAjGAuk1V-tuhad15r3zcaj7P2VenN8ihkBPpHpl5hFasHDH8AiLuWQlYQNqqSzby6kVzEkZFrGTxX3Qd5gAUxULeJULLoHy6aIO1PYVB1bH9E2q5QmHvX0k49d6XzUXer091LHBAj2yqRm2HH8yJHrr7alVPOfZ8_BBsed7ondgVgMj5rN0153IAK3WKqpqraTWw9iwKoGDGA",
+            "extra": "x",
+            "kid": "dk_xwing_0001",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "sig": "qLNWyXFTnb2CSFDAPY8QYuCIzG4yn_A_G9Bs4uExEnciwRoxe5cwVlRHpndLUQhKtx8-Xl2ISgeVgAiDpM91CA",
+            "suite": "cdv1-xwing-hkdf256-aes256gcm",
+            "v": 1
+          },
+          "error": "format"
+        },
+        {
+          "name": "a version that is not 1",
+          "envelope": {
+            "business_id": "org_0123456789abcdef",
+            "commit": "2t8Tu0pmePIwooSTnd_HVQ_TE0vG2asW5rGxjk6uGO0",
+            "ct": "WcLzpUOQk-9xc67zJzwebH5ayr0PQ7np6RO-44zxcvxizPybW_GORRRNwSYdoHzARdxYnd2k4cUL-3PvwM2JdCFnE01hjpu8aTcTbTAWs4Nh4RyfdfQPVxEajw4hi3D5K8hiX_l61YF1AA9EA2W1CYEdCk9zIdgkomZ-qURmrbVrghf6WJ7fxRyg8RSSiKPxLLE9nsApwWZV9PLax9qbhF-b0OZj2os3rPYgNVp4fh6LQnEbrCMWgqsarp6arRKJUc0mObWOGhP3i9TQlmaVjhiYJTQ",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "enc": "4jd1rgDdUyiCyVeM0xbHMAsZq6qAezuFla9Gyj4peBlIlxJUQCJ13EozlptWxecxq9mD8KySfczq2YT9I3IDOsJzJlQpuhm92vIcfAOo-ckeh15Wq7-W6d5wHUeHtS_kGws7aivH1v786IpHWWfB2tBKs_qpq894zEbsX5pLK2JU4QtifX1wzX64aSrIQe_4ku9QvitSGExXTApuwRgx8NMrbfzefhPYi_K1_J776QFI9yyBZOgZ4jliaM45Jq0Q1bMMvk1xS1gFv_jfO2VhiH3gAPrgfCrDH35Rw9xryo9LCvvXfnLPg_QBhqbxVJ2mDVYEOiqaojAvTeUCbUWDvPdcRyR9cjE7YLY44Hw-OUs8fo_Hu90HRknIoXI3ICnv-f7QPZ3MvXrNX3GMMvsiqx9i4GyrT5ep7hNbqN9bzcTyErAO-HwvtAiTp4OjgJRFtrsXguIQxDm6TW81CtZt0ZW5oy3-nHrTkNukKEW-k7ySF07rwMf3Z0lVY6uNy-LqWA5wEBeP81RZcE_iy-P-CKoiJ9EcJ8j2u-rp-CKq4Q5cdAOOnPxiMYYpwVwOwjOGGdVYr93qW8J8CeKHnl_lE9ZIq2SmtLO9eA54T7JLNXNhvpwlOvj9GPNAq4AIieDy8sriaYfvSL2vM2I9igjmK9vPEXFGeudZ-Ksgs84vv4W1gRX-zBgeH1q-N1b0KGCQB-vvpj-IaxGt3JMS3phS55mh_G8Hnbh_06AhOEgrQHkNst8nCgHXh3MFwxJAl3Co09IHDFbW-eIPmM0nHfX1e56A_w9qq8jbt4bxkx21_bvVwYdBxq7Wb1D6imXfPvm182CXSH4SrXKuelHL-rh1nZZTORYt1hQ0Rh144X5bNtj-OK7XFM8pRGEYg_qkeczSankgVydFlB8aVxqVRBO9O_WHRhX0Op1L8ISL7cOYSxvekdN0IVNje9dWRrfdn4g2lqQpTNxiND3RzaKVZUMHYduuPTbYoB5vn-Q5ViAuX8ejIDR8QLiLcCQJqpmEu66sCkKLRIOuYWuVMWYTZAdvGAi5nm2y2Y-KFcQatLihghtyFaE6Y9WGq1wnFzPU0ymy33uEDVanZ4Ceehz7ZsPxuIBD0YppsMgGqm_F0_GOS2Fh6x4gKxkDio5ggaXReakBK0V9IjdjOFDCXkpRPKTskUprx8TxUDm7Hqk_Q4_DGSYanGRKMnD5PIhmELG9fdlg5riA-yBg7q1Hcwhm2CBOxkBTIjTNQoRtucyAi6X_rdcHN9aqGuuQbeIZHaK4ZYcFfcKdgU8REAjGAuk1V-tuhad15r3zcaj7P2VenN8ihkBPpHpl5hFasHDH8AiLuWQlYQNqqSzby6kVzEkZFrGTxX3Qd5gAUxULeJULLoHy6aIO1PYVB1bH9E2q5QmHvX0k49d6XzUXer091LHBAj2yqRm2HH8yJHrr7alVPOfZ8_BBsed7ondgVgMj5rN0153IAK3WKqpqraTWw9iwKoGDGA",
+            "kid": "dk_xwing_0001",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "sig": "qLNWyXFTnb2CSFDAPY8QYuCIzG4yn_A_G9Bs4uExEnciwRoxe5cwVlRHpndLUQhKtx8-Xl2ISgeVgAiDpM91CA",
+            "suite": "cdv1-xwing-hkdf256-aes256gcm",
+            "v": 2
+          },
+          "error": "format"
+        }
+      ]
+    },
+    {
+      "name": "x25519",
+      "suite": "cdv1-x25519-hkdf256-aes256gcm",
+      "business_private_key_hex": "78959314d5f0b913946ce598e06983795b2c47ca540ec86c4c1b76c6c37d085d",
+      "business_public_key_hex": "a5ec6dc986cfb01ffa29ab4813c39a0306aa76a85db1c3c003aae33e6c5a6b48",
+      "kid": "dk_x25519_0001",
+      "business_id": "org_0123456789abcdef",
+      "customer_id": "cus_0123456789abcdef0123456789abcdef",
+      "request_id": "dsc_0123456789abcdef0123456789abcdef",
+      "record": "rec_0123456789abcdef0123456789abcdef",
+      "approved_at": 1793000000,
+      "vault_sign_public_key_hex": "2543b92ff1095511476adc8369db6ddc933665a11978dda1404ee1066ca9559d",
+      "keys": [
+        "full_name",
+        "birthday",
+        "note"
+      ],
+      "fields": {
+        "birthday": "1991-03-14",
+        "full_name": "Amina Okafor",
+        "note": "日本語 ñ 🙂 \"quoted\""
+      },
+      "statement_cbor_hex": "a961760162637458d450234e4853af247d168f53402e326baf18887ee3f24dd01e5f76d23cde7236009b3cb8fce0727ebf947075a0bae9b639363d52b110b7e9d76422a5690f04b2b43695e614a2dd91e0835b789ef538b82d4008acb5ea36c31bec172beaa5dfdfea37ea87163ba0d95ef6d8c4b9c83717f7de91f8e9ff171e2305b3de0cc677e77aa3df0ceee292dda67089cae54df921267248ae07817d8a525b6ea3dd6836ed4507bca8a32d57b2fee7be4c5b11fb7430216f2e9ce0a664108c62a2e2665cd04a962d6cb4740d28099104fe05f9899a3a4339467963656e635820501c077544d19d85171d67698a627e3aa57caa665564fc0b20a319891ad48613636b69646e646b5f7832353531395f30303031657375697465781d636476312d7832353531392d686b64663235362d61657332353667636d66636f6d6d69745820dd02255a737891df6347d54d89dfa7b97e6a8ea3c244a44da175e127566185ef6a726571756573745f696478246473635f30313233343536373839616263646566303132333435363738396162636465666b627573696e6573735f6964746f72675f303132333435363738396162636465666b637573746f6d65725f696478246375735f3031323334353637383961626364656630313233343536373839616263646566",
+      "envelope": {
+        "v": 1,
+        "suite": "cdv1-x25519-hkdf256-aes256gcm",
+        "request_id": "dsc_0123456789abcdef0123456789abcdef",
+        "business_id": "org_0123456789abcdef",
+        "customer_id": "cus_0123456789abcdef0123456789abcdef",
+        "kid": "dk_x25519_0001",
+        "enc": "UBwHdUTRnYUXHWdpimJ-OqV8qmZVZPwLIKMZiRrUhhM",
+        "commit": "3QIlWnN4kd9jR9VNid-nuX5qjqPCRKRNoXXhJ1Zhhe8",
+        "ct": "UCNOSFOvJH0Wj1NALjJrrxiIfuPyTdAeX3bSPN5yNgCbPLj84HJ-v5RwdaC66bY5Nj1SsRC36ddkIqVpDwSytDaV5hSi3ZHgg1t4nvU4uC1ACKy16jbDG-wXK-ql39_qN-qHFjug2V722MS5yDcX996R-On_Fx4jBbPeDMZ353qj3wzu4pLdpnCJyuVN-SEmckiuB4F9ilJbbqPdaDbtRQe8qKMtV7L-575MWxH7dDAhby6c4KZkEIxiouJmXNBKli1stHQNKAmRBP4F-YmaOkM5Rnk",
+        "sig": "tFX4KiBqLnJhlUuhAejUrCqjUTiqUStoldgd3lJoI0WVLCbjC_0MyuVoVwM9tb4s2ohNSqJrkcbH7tuAjVN-Bg"
+      },
+      "refuse": [
+        {
+          "name": "a changed signature",
+          "envelope": {
+            "business_id": "org_0123456789abcdef",
+            "commit": "3QIlWnN4kd9jR9VNid-nuX5qjqPCRKRNoXXhJ1Zhhe8",
+            "ct": "UCNOSFOvJH0Wj1NALjJrrxiIfuPyTdAeX3bSPN5yNgCbPLj84HJ-v5RwdaC66bY5Nj1SsRC36ddkIqVpDwSytDaV5hSi3ZHgg1t4nvU4uC1ACKy16jbDG-wXK-ql39_qN-qHFjug2V722MS5yDcX996R-On_Fx4jBbPeDMZ353qj3wzu4pLdpnCJyuVN-SEmckiuB4F9ilJbbqPdaDbtRQe8qKMtV7L-575MWxH7dDAhby6c4KZkEIxiouJmXNBKli1stHQNKAmRBP4F-YmaOkM5Rnk",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "enc": "UBwHdUTRnYUXHWdpimJ-OqV8qmZVZPwLIKMZiRrUhhM",
+            "kid": "dk_x25519_0001",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "sig": "tFX4KiBqLnJhlUuhAejUrCqjUTiqUStoldgd3lJoI0WULCbjC_0MyuVoVwM9tb4s2ohNSqJrkcbH7tuAjVN-Bg",
+            "suite": "cdv1-x25519-hkdf256-aes256gcm",
+            "v": 1
+          },
+          "error": "signature"
+        },
+        {
+          "name": "a changed enc",
+          "envelope": {
+            "business_id": "org_0123456789abcdef",
+            "commit": "3QIlWnN4kd9jR9VNid-nuX5qjqPCRKRNoXXhJ1Zhhe8",
+            "ct": "UCNOSFOvJH0Wj1NALjJrrxiIfuPyTdAeX3bSPN5yNgCbPLj84HJ-v5RwdaC66bY5Nj1SsRC36ddkIqVpDwSytDaV5hSi3ZHgg1t4nvU4uC1ACKy16jbDG-wXK-ql39_qN-qHFjug2V722MS5yDcX996R-On_Fx4jBbPeDMZ353qj3wzu4pLdpnCJyuVN-SEmckiuB4F9ilJbbqPdaDbtRQe8qKMtV7L-575MWxH7dDAhby6c4KZkEIxiouJmXNBKli1stHQNKAmRBP4F-YmaOkM5Rnk",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "enc": "UBwHdUTRnYUXHWdpimJ-OqR8qmZVZPwLIKMZiRrUhhM",
+            "kid": "dk_x25519_0001",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "sig": "tFX4KiBqLnJhlUuhAejUrCqjUTiqUStoldgd3lJoI0WVLCbjC_0MyuVoVwM9tb4s2ohNSqJrkcbH7tuAjVN-Bg",
+            "suite": "cdv1-x25519-hkdf256-aes256gcm",
+            "v": 1
+          },
+          "error": "signature"
+        },
+        {
+          "name": "a changed ciphertext",
+          "envelope": {
+            "business_id": "org_0123456789abcdef",
+            "commit": "3QIlWnN4kd9jR9VNid-nuX5qjqPCRKRNoXXhJ1Zhhe8",
+            "ct": "UCNOSFOvJH0Wj1NALjJrrxiIfuPyTdAeX3bSPN5yNgCbPLj84HJ-v5RwdaC66bY5Nj1SsRC36ddkIqVpDwSytDaV5hSi3ZHgg1t4nvU4uC1ACKy16jbDG-wXK-ql39_qN-qHFjug2V722MW5yDcX996R-On_Fx4jBbPeDMZ353qj3wzu4pLdpnCJyuVN-SEmckiuB4F9ilJbbqPdaDbtRQe8qKMtV7L-575MWxH7dDAhby6c4KZkEIxiouJmXNBKli1stHQNKAmRBP4F-YmaOkM5Rnk",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "enc": "UBwHdUTRnYUXHWdpimJ-OqV8qmZVZPwLIKMZiRrUhhM",
+            "kid": "dk_x25519_0001",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "sig": "tFX4KiBqLnJhlUuhAejUrCqjUTiqUStoldgd3lJoI0WVLCbjC_0MyuVoVwM9tb4s2ohNSqJrkcbH7tuAjVN-Bg",
+            "suite": "cdv1-x25519-hkdf256-aes256gcm",
+            "v": 1
+          },
+          "error": "signature"
+        },
+        {
+          "name": "a changed commitment",
+          "envelope": {
+            "business_id": "org_0123456789abcdef",
+            "commit": "3QIlWnN4kd9jR9VNid-nuX9qjqPCRKRNoXXhJ1Zhhe8",
+            "ct": "UCNOSFOvJH0Wj1NALjJrrxiIfuPyTdAeX3bSPN5yNgCbPLj84HJ-v5RwdaC66bY5Nj1SsRC36ddkIqVpDwSytDaV5hSi3ZHgg1t4nvU4uC1ACKy16jbDG-wXK-ql39_qN-qHFjug2V722MS5yDcX996R-On_Fx4jBbPeDMZ353qj3wzu4pLdpnCJyuVN-SEmckiuB4F9ilJbbqPdaDbtRQe8qKMtV7L-575MWxH7dDAhby6c4KZkEIxiouJmXNBKli1stHQNKAmRBP4F-YmaOkM5Rnk",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "enc": "UBwHdUTRnYUXHWdpimJ-OqV8qmZVZPwLIKMZiRrUhhM",
+            "kid": "dk_x25519_0001",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "sig": "tFX4KiBqLnJhlUuhAejUrCqjUTiqUStoldgd3lJoI0WVLCbjC_0MyuVoVwM9tb4s2ohNSqJrkcbH7tuAjVN-Bg",
+            "suite": "cdv1-x25519-hkdf256-aes256gcm",
+            "v": 1
+          },
+          "error": "signature"
+        },
+        {
+          "name": "another request id in the envelope",
+          "envelope": {
+            "business_id": "org_0123456789abcdef",
+            "commit": "3QIlWnN4kd9jR9VNid-nuX5qjqPCRKRNoXXhJ1Zhhe8",
+            "ct": "UCNOSFOvJH0Wj1NALjJrrxiIfuPyTdAeX3bSPN5yNgCbPLj84HJ-v5RwdaC66bY5Nj1SsRC36ddkIqVpDwSytDaV5hSi3ZHgg1t4nvU4uC1ACKy16jbDG-wXK-ql39_qN-qHFjug2V722MS5yDcX996R-On_Fx4jBbPeDMZ353qj3wzu4pLdpnCJyuVN-SEmckiuB4F9ilJbbqPdaDbtRQe8qKMtV7L-575MWxH7dDAhby6c4KZkEIxiouJmXNBKli1stHQNKAmRBP4F-YmaOkM5Rnk",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "enc": "UBwHdUTRnYUXHWdpimJ-OqV8qmZVZPwLIKMZiRrUhhM",
+            "kid": "dk_x25519_0001",
+            "request_id": "dsc_ffffffffffffffffffffffffffffffff",
+            "sig": "tFX4KiBqLnJhlUuhAejUrCqjUTiqUStoldgd3lJoI0WVLCbjC_0MyuVoVwM9tb4s2ohNSqJrkcbH7tuAjVN-Bg",
+            "suite": "cdv1-x25519-hkdf256-aes256gcm",
+            "v": 1
+          },
+          "error": "request"
+        },
+        {
+          "name": "another business expected",
+          "envelope": {
+            "v": 1,
+            "suite": "cdv1-x25519-hkdf256-aes256gcm",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "business_id": "org_0123456789abcdef",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "kid": "dk_x25519_0001",
+            "enc": "UBwHdUTRnYUXHWdpimJ-OqV8qmZVZPwLIKMZiRrUhhM",
+            "commit": "3QIlWnN4kd9jR9VNid-nuX5qjqPCRKRNoXXhJ1Zhhe8",
+            "ct": "UCNOSFOvJH0Wj1NALjJrrxiIfuPyTdAeX3bSPN5yNgCbPLj84HJ-v5RwdaC66bY5Nj1SsRC36ddkIqVpDwSytDaV5hSi3ZHgg1t4nvU4uC1ACKy16jbDG-wXK-ql39_qN-qHFjug2V722MS5yDcX996R-On_Fx4jBbPeDMZ353qj3wzu4pLdpnCJyuVN-SEmckiuB4F9ilJbbqPdaDbtRQe8qKMtV7L-575MWxH7dDAhby6c4KZkEIxiouJmXNBKli1stHQNKAmRBP4F-YmaOkM5Rnk",
+            "sig": "tFX4KiBqLnJhlUuhAejUrCqjUTiqUStoldgd3lJoI0WVLCbjC_0MyuVoVwM9tb4s2ohNSqJrkcbH7tuAjVN-Bg"
+          },
+          "expected_override": {
+            "business_id": "org_ffffffffffffffff"
+          },
+          "error": "business"
+        },
+        {
+          "name": "another customer expected",
+          "envelope": {
+            "v": 1,
+            "suite": "cdv1-x25519-hkdf256-aes256gcm",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "business_id": "org_0123456789abcdef",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "kid": "dk_x25519_0001",
+            "enc": "UBwHdUTRnYUXHWdpimJ-OqV8qmZVZPwLIKMZiRrUhhM",
+            "commit": "3QIlWnN4kd9jR9VNid-nuX5qjqPCRKRNoXXhJ1Zhhe8",
+            "ct": "UCNOSFOvJH0Wj1NALjJrrxiIfuPyTdAeX3bSPN5yNgCbPLj84HJ-v5RwdaC66bY5Nj1SsRC36ddkIqVpDwSytDaV5hSi3ZHgg1t4nvU4uC1ACKy16jbDG-wXK-ql39_qN-qHFjug2V722MS5yDcX996R-On_Fx4jBbPeDMZ353qj3wzu4pLdpnCJyuVN-SEmckiuB4F9ilJbbqPdaDbtRQe8qKMtV7L-575MWxH7dDAhby6c4KZkEIxiouJmXNBKli1stHQNKAmRBP4F-YmaOkM5Rnk",
+            "sig": "tFX4KiBqLnJhlUuhAejUrCqjUTiqUStoldgd3lJoI0WVLCbjC_0MyuVoVwM9tb4s2ohNSqJrkcbH7tuAjVN-Bg"
+          },
+          "expected_override": {
+            "customer_id": "cus_ffffffffffffffffffffffffffffffff"
+          },
+          "error": "customer"
+        },
+        {
+          "name": "another key id expected",
+          "envelope": {
+            "v": 1,
+            "suite": "cdv1-x25519-hkdf256-aes256gcm",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "business_id": "org_0123456789abcdef",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "kid": "dk_x25519_0001",
+            "enc": "UBwHdUTRnYUXHWdpimJ-OqV8qmZVZPwLIKMZiRrUhhM",
+            "commit": "3QIlWnN4kd9jR9VNid-nuX5qjqPCRKRNoXXhJ1Zhhe8",
+            "ct": "UCNOSFOvJH0Wj1NALjJrrxiIfuPyTdAeX3bSPN5yNgCbPLj84HJ-v5RwdaC66bY5Nj1SsRC36ddkIqVpDwSytDaV5hSi3ZHgg1t4nvU4uC1ACKy16jbDG-wXK-ql39_qN-qHFjug2V722MS5yDcX996R-On_Fx4jBbPeDMZ353qj3wzu4pLdpnCJyuVN-SEmckiuB4F9ilJbbqPdaDbtRQe8qKMtV7L-575MWxH7dDAhby6c4KZkEIxiouJmXNBKli1stHQNKAmRBP4F-YmaOkM5Rnk",
+            "sig": "tFX4KiBqLnJhlUuhAejUrCqjUTiqUStoldgd3lJoI0WVLCbjC_0MyuVoVwM9tb4s2ohNSqJrkcbH7tuAjVN-Bg"
+          },
+          "expected_override": {
+            "kid": "dk_other"
+          },
+          "error": "key"
+        },
+        {
+          "name": "a vault-sign key that is not the customer's",
+          "envelope": {
+            "v": 1,
+            "suite": "cdv1-x25519-hkdf256-aes256gcm",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "business_id": "org_0123456789abcdef",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "kid": "dk_x25519_0001",
+            "enc": "UBwHdUTRnYUXHWdpimJ-OqV8qmZVZPwLIKMZiRrUhhM",
+            "commit": "3QIlWnN4kd9jR9VNid-nuX5qjqPCRKRNoXXhJ1Zhhe8",
+            "ct": "UCNOSFOvJH0Wj1NALjJrrxiIfuPyTdAeX3bSPN5yNgCbPLj84HJ-v5RwdaC66bY5Nj1SsRC36ddkIqVpDwSytDaV5hSi3ZHgg1t4nvU4uC1ACKy16jbDG-wXK-ql39_qN-qHFjug2V722MS5yDcX996R-On_Fx4jBbPeDMZ353qj3wzu4pLdpnCJyuVN-SEmckiuB4F9ilJbbqPdaDbtRQe8qKMtV7L-575MWxH7dDAhby6c4KZkEIxiouJmXNBKli1stHQNKAmRBP4F-YmaOkM5Rnk",
+            "sig": "tFX4KiBqLnJhlUuhAejUrCqjUTiqUStoldgd3lJoI0WVLCbjC_0MyuVoVwM9tb4s2ohNSqJrkcbH7tuAjVN-Bg"
+          },
+          "expected_override": {
+            "vault_sign_public_key_hex": "174553b456dddfc6908ecab1c101fe6ab21e2baa0617795b7d43a63482993fd5"
+          },
+          "error": "signature"
+        },
+        {
+          "name": "a key list with an extra key",
+          "envelope": {
+            "v": 1,
+            "suite": "cdv1-x25519-hkdf256-aes256gcm",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "business_id": "org_0123456789abcdef",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "kid": "dk_x25519_0001",
+            "enc": "UBwHdUTRnYUXHWdpimJ-OqV8qmZVZPwLIKMZiRrUhhM",
+            "commit": "3QIlWnN4kd9jR9VNid-nuX5qjqPCRKRNoXXhJ1Zhhe8",
+            "ct": "UCNOSFOvJH0Wj1NALjJrrxiIfuPyTdAeX3bSPN5yNgCbPLj84HJ-v5RwdaC66bY5Nj1SsRC36ddkIqVpDwSytDaV5hSi3ZHgg1t4nvU4uC1ACKy16jbDG-wXK-ql39_qN-qHFjug2V722MS5yDcX996R-On_Fx4jBbPeDMZ353qj3wzu4pLdpnCJyuVN-SEmckiuB4F9ilJbbqPdaDbtRQe8qKMtV7L-575MWxH7dDAhby6c4KZkEIxiouJmXNBKli1stHQNKAmRBP4F-YmaOkM5Rnk",
+            "sig": "tFX4KiBqLnJhlUuhAejUrCqjUTiqUStoldgd3lJoI0WVLCbjC_0MyuVoVwM9tb4s2ohNSqJrkcbH7tuAjVN-Bg"
+          },
+          "expected_override": {
+            "keys": [
+              "full_name",
+              "birthday",
+              "note",
+              "salary"
+            ]
+          },
+          "error": "payload"
+        },
+        {
+          "name": "a key list with a key missing",
+          "envelope": {
+            "v": 1,
+            "suite": "cdv1-x25519-hkdf256-aes256gcm",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "business_id": "org_0123456789abcdef",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "kid": "dk_x25519_0001",
+            "enc": "UBwHdUTRnYUXHWdpimJ-OqV8qmZVZPwLIKMZiRrUhhM",
+            "commit": "3QIlWnN4kd9jR9VNid-nuX5qjqPCRKRNoXXhJ1Zhhe8",
+            "ct": "UCNOSFOvJH0Wj1NALjJrrxiIfuPyTdAeX3bSPN5yNgCbPLj84HJ-v5RwdaC66bY5Nj1SsRC36ddkIqVpDwSytDaV5hSi3ZHgg1t4nvU4uC1ACKy16jbDG-wXK-ql39_qN-qHFjug2V722MS5yDcX996R-On_Fx4jBbPeDMZ353qj3wzu4pLdpnCJyuVN-SEmckiuB4F9ilJbbqPdaDbtRQe8qKMtV7L-575MWxH7dDAhby6c4KZkEIxiouJmXNBKli1stHQNKAmRBP4F-YmaOkM5Rnk",
+            "sig": "tFX4KiBqLnJhlUuhAejUrCqjUTiqUStoldgd3lJoI0WVLCbjC_0MyuVoVwM9tb4s2ohNSqJrkcbH7tuAjVN-Bg"
+          },
+          "expected_override": {
+            "keys": [
+              "full_name",
+              "birthday"
+            ]
+          },
+          "error": "payload"
+        },
+        {
+          "name": "an unknown field",
+          "envelope": {
+            "business_id": "org_0123456789abcdef",
+            "commit": "3QIlWnN4kd9jR9VNid-nuX5qjqPCRKRNoXXhJ1Zhhe8",
+            "ct": "UCNOSFOvJH0Wj1NALjJrrxiIfuPyTdAeX3bSPN5yNgCbPLj84HJ-v5RwdaC66bY5Nj1SsRC36ddkIqVpDwSytDaV5hSi3ZHgg1t4nvU4uC1ACKy16jbDG-wXK-ql39_qN-qHFjug2V722MS5yDcX996R-On_Fx4jBbPeDMZ353qj3wzu4pLdpnCJyuVN-SEmckiuB4F9ilJbbqPdaDbtRQe8qKMtV7L-575MWxH7dDAhby6c4KZkEIxiouJmXNBKli1stHQNKAmRBP4F-YmaOkM5Rnk",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "enc": "UBwHdUTRnYUXHWdpimJ-OqV8qmZVZPwLIKMZiRrUhhM",
+            "extra": "x",
+            "kid": "dk_x25519_0001",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "sig": "tFX4KiBqLnJhlUuhAejUrCqjUTiqUStoldgd3lJoI0WVLCbjC_0MyuVoVwM9tb4s2ohNSqJrkcbH7tuAjVN-Bg",
+            "suite": "cdv1-x25519-hkdf256-aes256gcm",
+            "v": 1
+          },
+          "error": "format"
+        },
+        {
+          "name": "a version that is not 1",
+          "envelope": {
+            "business_id": "org_0123456789abcdef",
+            "commit": "3QIlWnN4kd9jR9VNid-nuX5qjqPCRKRNoXXhJ1Zhhe8",
+            "ct": "UCNOSFOvJH0Wj1NALjJrrxiIfuPyTdAeX3bSPN5yNgCbPLj84HJ-v5RwdaC66bY5Nj1SsRC36ddkIqVpDwSytDaV5hSi3ZHgg1t4nvU4uC1ACKy16jbDG-wXK-ql39_qN-qHFjug2V722MS5yDcX996R-On_Fx4jBbPeDMZ353qj3wzu4pLdpnCJyuVN-SEmckiuB4F9ilJbbqPdaDbtRQe8qKMtV7L-575MWxH7dDAhby6c4KZkEIxiouJmXNBKli1stHQNKAmRBP4F-YmaOkM5Rnk",
+            "customer_id": "cus_0123456789abcdef0123456789abcdef",
+            "enc": "UBwHdUTRnYUXHWdpimJ-OqV8qmZVZPwLIKMZiRrUhhM",
+            "kid": "dk_x25519_0001",
+            "request_id": "dsc_0123456789abcdef0123456789abcdef",
+            "sig": "tFX4KiBqLnJhlUuhAejUrCqjUTiqUStoldgd3lJoI0WVLCbjC_0MyuVoVwM9tb4s2ohNSqJrkcbH7tuAjVN-Bg",
+            "suite": "cdv1-x25519-hkdf256-aes256gcm",
+            "v": 2
+          },
+          "error": "format"
+        }
+      ]
+    }
+  ],
+  "description": "A disclosure envelope sealed for each suite, and changes that every reader must refuse. Open each with the business private key and the customer's vault-sign public key. The statement is the deterministic CBOR the signature covers."
+}

@@ -1,0 +1,9 @@
+.tools/
+.env
+.env.*
+!.env.example
+.DS_Store
+**/.DS_Store
+*.log
+*.pem
+*.key

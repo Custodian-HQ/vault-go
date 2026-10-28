@@ -1,0 +1,37 @@
+{
+  "aad": "kind_label || 0x00 || customer_id || 0x00 || epoch (8 bytes, big endian)",
+  "context": {
+    "customer_id": "cus_0123",
+    "epoch": 1
+  },
+  "master_key_hex": "c91e0907d114fd83c1edc396490bb2dafa43c19815b0354e70dc80c317c3cb0a",
+  "master_key_uniform_bytes_hex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40",
+  "mk_commit_hex": "104fcb586bc70bf69be07cb09d89bb99aa874b334dba40ba85fc91803120d5ee",
+  "mk_commit_label": "cdv/v1/mk-commit",
+  "passkey_copy": {
+    "credential_id_hex": "909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+    "envelope_hex": "01012fbbda77576b2760b0b1b2b3b4b5b6b7b8b9babba065329af04fdc261e7c188e05f53c4d59ce1703780deaa9ecf8c48d29958a03a1645efee82fa30dd0b1da85c7bb7860f253d7bcba914f7e824e57ccf3f93e93ee3f27fc0ec6f85cc351f769c6e5b3ca",
+    "label": "cdv/v1/passkey-copy",
+    "nonce_hex": "b0b1b2b3b4b5b6b7b8b9babb",
+    "prf_output_hex": "707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f"
+  },
+  "secret_copy": {
+    "envelope_hex": "0101816b9e7c25d559c5505152535455565758595a5b6e740c4c2712ac993dceb340e56f3ba6ab0a22cea247d2582c327bccccc97f4eac014ae91247e513c0efa8a2c55793080cb4d1229d21a9c86b1b4df7f9d7f7e0f04a5bac1b906d3d482c76e7320089f4",
+    "label": "cdv/v1/secret-copy",
+    "nonce_hex": "505152535455565758595a5b",
+    "params": {
+      "m": 19456,
+      "t": 2,
+      "p": 1
+    },
+    "salt_hex": "303132333435363738393a3b3c3d3e3f",
+    "secret_utf8": "correct horse battery staple"
+  },
+  "sign_seed_wrap": {
+    "envelope_hex": "0101f2dcce8e0f47f9f1d0d1d2d3d4d5d6d7d8d9dadba949fdda2ffe5198134bf8a6e2c5d305cde5e5536ac98463ac73987d343d894a837304b18807673f49dc9e4632db011bcb5407eaf40fe929b47347c018d946605601692a286192d65cf9100d5bc30115",
+    "key": "HKDF-SHA256(enc(MK), info = label), 32 bytes. The seed is the seed of sign.json.",
+    "label": "cdv/v1/sign-seed-wrap",
+    "nonce_hex": "d0d1d2d3d4d5d6d7d8d9dadb",
+    "seed_hex": "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60"
+  }
+}

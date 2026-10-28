@@ -1,0 +1,134 @@
+{
+  "dealing": {
+    "threshold": 2,
+    "commitments": "d47d9d8ca5405d9619856fc06041bb0996f572cb0497c7c7afe9beeed4ad6f7f2c5bdbd6291d885548dde0adf936eb6f8227e0b721873221cb5deb3b164a7d73",
+    "commitments_hash": "a6dd1bdfd0ff130c87d56d62ea5f33e806712db3dd960bd48b632e3ae89a6078",
+    "shares": [
+      {
+        "index": 1,
+        "share": "014b8cf0d4bc66acec9396b3868f92e4dd65e79c4eaf6d10caa65fa00ae7266f061e1334b330b4c7708445f421e6ad4ac12a60f2656656d9492086a0d12e87f50d"
+      },
+      {
+        "index": 2,
+        "share": "02968ef1fb1458e24b5b8aae7a0393879c60a05caee76475dbb878f3276391460cf68ba4db22312acf034ffa9cc5b3a3e0905d54abf579c22f1a3d86ea2427af08"
+      },
+      {
+        "index": 3,
+        "share": "03f4bcfcc552e605534ce1b1cb98994b465b591c0e205cdaecca914645dffb1d02ce04150415ae8c2d83580018a5b9fcfff65ab6f0849dab1514f46b031bc76803"
+      }
+    ]
+  },
+  "hash_label": "cdv/v1/pedersen-commitments",
+  "note": "Pedersen sharing on ristretto255 with the fixed second generator H. Scalars are 32 bytes little endian (canonical). A share is index (1 byte) then S then T. Commitments are t points of 32 bytes. The hash is SHA-256(label || 0x00 || uint16 big endian count || points) with the label below.",
+  "rebuild": "every group of 2 of the 3 shares gives the secret",
+  "refused_shares": [
+    {
+      "name": "a bit of S changed",
+      "share": "014a8cf0d4bc66acec9396b3868f92e4dd65e79c4eaf6d10caa65fa00ae7266f061e1334b330b4c7708445f421e6ad4ac12a60f2656656d9492086a0d12e87f50d",
+      "reason": "does not match the commitments"
+    },
+    {
+      "name": "a bit of T changed",
+      "share": "014b8cf0d4bc66acec9396b3868f92e4dd65e79c4eaf6d10caa65fa00ae7266f061f1334b330b4c7708445f421e6ad4ac12a60f2656656d9492086a0d12e87f50d",
+      "reason": "does not match the commitments"
+    },
+    {
+      "name": "the index of another share",
+      "share": "024b8cf0d4bc66acec9396b3868f92e4dd65e79c4eaf6d10caa65fa00ae7266f061e1334b330b4c7708445f421e6ad4ac12a60f2656656d9492086a0d12e87f50d",
+      "reason": "does not match the commitments"
+    },
+    {
+      "name": "index zero",
+      "share": "004b8cf0d4bc66acec9396b3868f92e4dd65e79c4eaf6d10caa65fa00ae7266f061e1334b330b4c7708445f421e6ad4ac12a60f2656656d9492086a0d12e87f50d",
+      "reason": "index 0 is the secret"
+    },
+    {
+      "name": "S not canonical",
+      "share": "01ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff1e1334b330b4c7708445f421e6ad4ac12a60f2656656d9492086a0d12e87f50d",
+      "reason": "scalar above the group order"
+    }
+  ],
+  "reshare": {
+    "new_commitments": "d47d9d8ca5405d9619856fc06041bb0996f572cb0497c7c7afe9beeed4ad6f7f3ce9ef5ae5ff84196253fdb5e4988bbdde7d85eeb7208db3a4feaa136470d547e89ff10157c70f517880f3c842c45f171540b0dd9e68c2abb17cab5dee3d7362",
+    "new_holders": 5,
+    "new_shares": [
+      "0175e4fafe3785ef371b28587e1b6bc8e72e2f5ce02ead1537a5406a25e32f4607e549f65b542ada3272ae151fdc733bdb026f0ea616e078024d0cf6b005b3b30e",
+      "0291eaaa031cc95893c9f2b55251cabc22179bae9684672649a8ebcc5096da740f233ec5c63cbd1da1454b0dd13c6e5b1df5a1db968edddfd8fe5654718274d70d",
+      "0367c8095ff6dd9f470166da6cdeb53fbb2372d41178a5ddee9d47756f84bc230913a33a6edd8c1d05a975dd194a9d72539bfbf7f23e2b25e73bafd5f9ae2ba700",
+      "04e4510d6ee126d7ac981ebd6fa12730c654b4cd5109673b2886546381add552048f20420c6b5ffe0e4967753fc1f43ea7f57b63ba27c9482d04157a4a8bd82207",
+      "050887b530dda3fec28f1c5e5b9a1f8e43aa619a5638ac3ff56012978611260201bd0ef0e6b06e9b0e79e6e5fbe48002ef03231eed48b74aab57884163177b4a01"
+    ],
+    "new_threshold": 3,
+    "old_holders": "AQM=",
+    "refused_contribution": {
+      "commitments": "5af52de008b479e132ff97aef39b894d156e6f3575d10f5f793fcbadf4026a268e82e3040b30e7bd7de21fda5825785225e432c3a656f0bee5b0b1a3f4f6990f8c39584a35ed24c760159d78384e6e5f715fd6050033c1f54e808527989e0f4a",
+      "from": 2,
+      "reason": "a dealing of another secret under old index 2",
+      "share": "019647818632ff23ee02d07691b8538bb7236b2d95d884c3dc59e40b867ba31f092821a898364abb49735c108267c7af5a4c5bc39032758ed4a84ce294a329b20b"
+    },
+    "rule": "a new holder must refuse a contribution whose first commitment is not the old holder's share commitment; the new shares rebuild the same secret; any 3 of the 5 do",
+    "sub_dealings": [
+      {
+        "from": 1,
+        "dealing": {
+          "threshold": 3,
+          "commitments": "4ed3a10f7b04c981fa8751037c612e062c7b700251ef6e9826020cd249dbc045c662944a683c409360d5475fdf0bcc39e30dad41c5bb24144b743ea4a5ba816554ce7a13d772dc2d812ac5b34d892b27be4efeb7cb80e9e425f45e1769127e1b",
+          "commitments_hash": "d3f19e41a704df4b78e90a35baa71c53beffe072bb052a823a05e984a7cb3e8e",
+          "shares": [
+            {
+              "index": 1,
+              "share": "015c1e5963d15f973a06458f2e4331c2ffb6a072780f54ef66b1820be3f4ad41094454e83d957548bd1f171e337745d530e22ed234e9f4699bc2133630aad55c08"
+            },
+            {
+              "index": 2,
+              "share": "026fbeb4fa708479381a19aff9c3422d141e390fb5f940e4e4561fc7d91d9767001335546ec93ce5d4821f7cd6261f3a7f39fe04d891b61851daa6a82667444b0d"
+            },
+            {
+              "index": 3,
+              "share": "035e14ef54d09a77967c4c022ecfbae3449bb072046e34ef439735d3ee61e2e00b9ee181e7b2a68b5fd7c1166916419a9730ce8a4f609be56a673ff8b465d3c00c"
+            },
+            {
+              "index": 4,
+              "share": "044f781cb8badc6ca480a59985a7a527682e079d666c2e108472c52f22c18fad0be55971a951b33b5d1dfeedea45abf579c79e639b54a3d0e869dd24dba582bd06"
+            },
+            {
+              "index": 5,
+              "share": "052fbe32814aad6bbafcc06ca32bfdd792d73c8edbf42e47a5e8cedc733b9fcd0fd5711811c0c507262b71f9fe93572b3bfe6f8fbb6eced9cae1802e992752410b"
+            }
+          ]
+        }
+      },
+      {
+        "from": 3,
+        "dealing": {
+          "threshold": 3,
+          "commitments": "6e52ae503d697a8a98e5a249f689376b6fcfe9354e0aa89178206f592845f864f446aba850a0e14d19a856d0b5a197f8954c9933b1a3743dd6945f516f21fa75e8ac3125641486b8da24ac0a1f3a925d10f93a45a02674ce3ad052012469f955",
+          "commitments_hash": "74a665a69bd901fa5b10727f03f58c80d7da549bdb8d956bb236df8cd7ba08d9",
+          "shares": [
+            {
+              "index": 1,
+              "share": "012a92152c0415e73fdc7efd8e92bdb52fc7839fa8d0a1a2c6c9064e5e18aa380def3cc25e316f372a518526fe8be2e7f0a0ae59528e1e4ccdad22b62ef31aaf0b"
+            },
+            {
+              "index": 2,
+              "share": "02050eb4a24fc1df32689f908d6627cc202c75d0f1e3f35f1cb486bbeb2c104d02f32272bde23b743cfdc759e1fa80f742c2b6575a98688a419146519130e4320c"
+            },
+            {
+              "index": 3,
+              "share": "035fd8c3e369b114dc9c7c5a0dd2ca4c438a2dafe9595212ee89118fed1c2e5b01dab624202914436487209ac1f1942bf65a73b008a37b6672be5f3d2bd322f404"
+            },
+            {
+              "index": 4,
+              "share": "0438f144ef52e5853b7a165b0ed5a73797e1ac3b9032bdb93b4ba7c863e803630a91cccfe31e5bb6f9c52bdf414f18631f6be4635dae57e05f356e7afcdad6f205"
+            },
+            {
+              "index": 5,
+              "share": "05a3844168f0f920f929d09aed90c4ad0732f375e56d345605f847684e8f91640d18647308c410cefcb8e92862130b9ebef2097258bafcf709f671080548002f0f"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "secret": "008aefad6475768dcca2b8921b92411f6b2eddee7676abb894464ded6abc9700"
+}

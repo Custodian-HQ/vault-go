@@ -1,0 +1,27 @@
+{
+  "public_key": "adc14011f82d1c56d956aa4f9d73d8858361a606048525e0d08c638dc75dd8c7",
+  "rule": "signature = Ed25519(vault-sign, label || 0x00 || deterministic CBOR of the statement). A reader also refuses a statement that is not deterministic CBOR. A signature for one label must not verify under another.",
+  "seed_hex": "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+  "signed": [
+    {
+      "label": "cdv/v1/sig-holder-key",
+      "statement_hex": "a401686473635f3031323302687265635f34353637038266696e636f6d656b69645f646f63756d656e74041a6553f100",
+      "signature_hex": "cc4b263f7cbe8decac72ce990cec3ea4b963eda34e1306834500c2431626be9ebe86ee24ae72916823329303944938b7093b8af341b87d7609e98eefe64c980b"
+    },
+    {
+      "label": "cdv/v1/sig-share",
+      "statement_hex": "a401686473635f3031323302687265635f34353637038266696e636f6d656b69645f646f63756d656e74041a6553f100",
+      "signature_hex": "f456ec7c73fa60f83a230339a70c157fda0d148d2d7f48a29b7c5bfddbf9a9cafdcb7c93225b7c5b6ad52bb5d54543556791dbf25c18d3e4d4b364806664af05"
+    },
+    {
+      "label": "cdv/v1/sig-disclosure",
+      "statement_hex": "a401686473635f3031323302687265635f34353637038266696e636f6d656b69645f646f63756d656e74041a6553f100",
+      "signature_hex": "d33ab355dc55eccac5317ed74b924454a1ade8902733a3e1eccf5a97349bf95dc989f71d7d8bb281b2f88e75189ae18c541311f41539686fe49e3acf9429e006"
+    },
+    {
+      "label": "cdv/v1/sig-completion",
+      "statement_hex": "a401686473635f3031323302687265635f34353637038266696e636f6d656b69645f646f63756d656e74041a6553f100",
+      "signature_hex": "7a1eb11e56ef3f039492f0b9d340cc570a9dc71515f8d4a671da99039a0123f704bb31ae9e2ca08d716993f2d77fea1e20f65678a0488a3ab184ccac85ebfb08"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "h": "045d72394e47d328e46a8d72a685f4573a641e9c38abb6ce3482fb364019ad45",
+  "h_label": "cdv/v1/pedersen-H",
+  "h_method": "ristretto255 one-way map (FromUniformBytes) of SHA-512(h_label); not the RFC 9496 XMD hash_to_group",
+  "scalar": "12345, 32 bytes little endian",
+  "scalar_G": "b4c1b3cdef7ba1bd94fa95c7b736622046ef663285813c2293c52c5f4f9fb011",
+  "scalar_H": "80ed913acfd7c9040657de4210c2facd1035a5b56a38bffa263f16b0c52d1129"
+}

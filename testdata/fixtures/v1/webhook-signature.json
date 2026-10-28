@@ -1,0 +1,123 @@
+{
+  "description": "Webhook signature known answers. The first header was produced by custodian-api's own webhook.Sign (src/shared/webhook/sign.go); the rest are built from the same rule: HMAC-SHA256(secret, t + \".\" + body), hex, in the header t=<unix seconds>,v1=<hex>.",
+  "header_name": "Custodian-Signature",
+  "tolerance_seconds": 300,
+  "secret": "whsec_test_secret",
+  "body": "{\"id\":\"evt_1\",\"type\":\"session.completed\",\"created\":1700000000,\"livemode\":false,\"data\":{\"object\":{\"id\":\"ses_1\"}}}",
+  "cases": [
+    {
+      "name": "a good signature, at the same second",
+      "header": "t=1700000000,v1=ee95e91e9219ca1e6c7de2cb78e283c8dad1cdc6f7a17c8a69bf1d1205ab2ea0",
+      "now": 1700000000,
+      "valid": true
+    },
+    {
+      "name": "a good signature, 299 seconds late",
+      "header": "t=1700000000,v1=ee95e91e9219ca1e6c7de2cb78e283c8dad1cdc6f7a17c8a69bf1d1205ab2ea0",
+      "now": 1700000299,
+      "valid": true
+    },
+    {
+      "name": "a good signature, 299 seconds early",
+      "header": "t=1700000000,v1=ee95e91e9219ca1e6c7de2cb78e283c8dad1cdc6f7a17c8a69bf1d1205ab2ea0",
+      "now": 1699999701,
+      "valid": true
+    },
+    {
+      "name": "a good signature, 301 seconds late",
+      "header": "t=1700000000,v1=ee95e91e9219ca1e6c7de2cb78e283c8dad1cdc6f7a17c8a69bf1d1205ab2ea0",
+      "now": 1700000301,
+      "valid": false,
+      "error": "stale"
+    },
+    {
+      "name": "a good signature, 301 seconds early",
+      "header": "t=1700000000,v1=ee95e91e9219ca1e6c7de2cb78e283c8dad1cdc6f7a17c8a69bf1d1205ab2ea0",
+      "now": 1699999699,
+      "valid": false,
+      "error": "stale"
+    },
+    {
+      "name": "a signature from another secret",
+      "header": "t=1700000000,v1=5b93f027781e66e913f8a7ac5dc8e2e685009d4ec01348c5dc77f0f1b4b63965",
+      "now": 1700000000,
+      "valid": false,
+      "error": "signature"
+    },
+    {
+      "name": "a changed body",
+      "header": "t=1700000000,v1=ee95e91e9219ca1e6c7de2cb78e283c8dad1cdc6f7a17c8a69bf1d1205ab2ea0",
+      "now": 1700000000,
+      "valid": false,
+      "error": "signature",
+      "body": "{\"id\":\"evt_1\",\"type\":\"session.completed\",\"created\":1700000000,\"livemode\":false,\"data\":{\"object\":{\"id\":\"ses_2\"}}}"
+    },
+    {
+      "name": "a changed timestamp",
+      "header": "t=1700000001,v1=ee95e91e9219ca1e6c7de2cb78e283c8dad1cdc6f7a17c8a69bf1d1205ab2ea0",
+      "now": 1700000000,
+      "valid": false,
+      "error": "signature"
+    },
+    {
+      "name": "two signatures during rotation, the new secret is second",
+      "header": "t=1700000000,v1=6232e7872875b8216da2591cc9846e892c8247ddf94979d3c8a2b297eb6ad09d,v1=ee95e91e9219ca1e6c7de2cb78e283c8dad1cdc6f7a17c8a69bf1d1205ab2ea0",
+      "now": 1700000000,
+      "valid": true
+    },
+    {
+      "name": "two signatures during rotation, the new secret is first",
+      "header": "t=1700000000,v1=ee95e91e9219ca1e6c7de2cb78e283c8dad1cdc6f7a17c8a69bf1d1205ab2ea0,v1=6232e7872875b8216da2591cc9846e892c8247ddf94979d3c8a2b297eb6ad09d",
+      "now": 1700000000,
+      "valid": true
+    },
+    {
+      "name": "spaces after the commas",
+      "header": "t=1700000000, v1=ee95e91e9219ca1e6c7de2cb78e283c8dad1cdc6f7a17c8a69bf1d1205ab2ea0",
+      "now": 1700000000,
+      "valid": true
+    },
+    {
+      "name": "no timestamp",
+      "header": "v1=ee95e91e9219ca1e6c7de2cb78e283c8dad1cdc6f7a17c8a69bf1d1205ab2ea0",
+      "now": 1700000000,
+      "valid": false,
+      "error": "header"
+    },
+    {
+      "name": "no signature",
+      "header": "t=1700000000",
+      "now": 1700000000,
+      "valid": false,
+      "error": "header"
+    },
+    {
+      "name": "a timestamp that is not a number",
+      "header": "t=abc,v1=ee95e91e9219ca1e6c7de2cb78e283c8dad1cdc6f7a17c8a69bf1d1205ab2ea0",
+      "now": 1700000000,
+      "valid": false,
+      "error": "header"
+    },
+    {
+      "name": "a signature that is not hex",
+      "header": "t=1700000000,v1=zz",
+      "now": 1700000000,
+      "valid": false,
+      "error": "header"
+    },
+    {
+      "name": "a part with no equals sign",
+      "header": "t=1700000000,v1",
+      "now": 1700000000,
+      "valid": false,
+      "error": "header"
+    },
+    {
+      "name": "an empty header",
+      "header": "",
+      "now": 1700000000,
+      "valid": false,
+      "error": "header"
+    }
+  ]
+}
