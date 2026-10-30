@@ -48,6 +48,15 @@ func TestAnotherKeyForAKnownCustomerIsRefusedUntilAResetOrADeletion(t *testing.T
 	if held, _ := store.Get("cus_1"); !held.Equal(ed25519.PublicKey(a)) {
 		t.Error("the first key must be kept")
 	}
+	// A request for a reset deletes nothing, so the pinned key stays.
+	kept := &MemoryKeyStore{}
+	_ = Observe(kept, "customer.enrolled", enrolled("cus_1", a))
+	if err := Observe(kept, "customer.reset_requested", json.RawMessage(`{"id":"cus_1"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := Observe(kept, "customer.enrolled", enrolled("cus_1", b)); !errors.Is(err, ErrKeyChanged) {
+		t.Errorf("after a reset request the old key must still be pinned: %v", err)
+	}
 	for _, kind := range []string{"customer.reset", "customer.deleted"} {
 		s := &MemoryKeyStore{}
 		_ = Observe(s, "customer.enrolled", enrolled("cus_1", a))

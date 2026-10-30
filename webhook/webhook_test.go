@@ -104,3 +104,19 @@ func TestRecoveryHolderDeclinedReadsItsObjectAndRefusesOtherEvents(t *testing.T)
 		t.Error("another event type must be refused")
 	}
 }
+
+func TestCustomerSignInLimitReachedReadsItsObjectAndRefusesOtherEvents(t *testing.T) {
+	var event Event
+	body := `{"id":"evt_4","type":"customer.sign_in_limit_reached","created":1700000000,"livemode":true,"data":{"object":{"customer":"cus_1","livemode":true,"brake":"keyring_read","limit":10,"reached_at":"2026-10-29T10:00:00Z"}}}`
+	if err := json.Unmarshal([]byte(body), &event); err != nil {
+		t.Fatal(err)
+	}
+	got, err := event.CustomerSignInLimitReached()
+	if err != nil || got.Customer != "cus_1" || got.Brake != "keyring_read" || got.Limit != 10 || got.ReachedAt == "" {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+	event.Type = "recovery.action_required"
+	if _, err := event.CustomerSignInLimitReached(); err == nil {
+		t.Error("another event type must be refused")
+	}
+}

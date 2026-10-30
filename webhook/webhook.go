@@ -180,3 +180,28 @@ func (e *Event) RecoveryHolderDeclined() (*RecoveryHolderDeclined, error) {
 	}
 	return &out, nil
 }
+
+// EventCustomerSignInLimitReached is the type of the event that says a customer used the last slot of an hourly sign-in limit.
+const EventCustomerSignInLimitReached = "customer.sign_in_limit_reached"
+
+// CustomerSignInLimitReached is the object of a customer.sign_in_limit_reached event. It carries metadata only. Brake is sign_in_finish,
+// keyring_read or failed_assertion; Limit is the hourly count.
+type CustomerSignInLimitReached struct {
+	Customer  string `json:"customer"`
+	Livemode  bool   `json:"livemode"`
+	Brake     string `json:"brake"`
+	Limit     int    `json:"limit"`
+	ReachedAt string `json:"reached_at"`
+}
+
+// CustomerSignInLimitReached reads the object of a customer.sign_in_limit_reached event. It fails for any other event type.
+func (e *Event) CustomerSignInLimitReached() (*CustomerSignInLimitReached, error) {
+	if e.Type != EventCustomerSignInLimitReached {
+		return nil, errors.New("webhook: not a " + EventCustomerSignInLimitReached + " event")
+	}
+	var out CustomerSignInLimitReached
+	if err := json.Unmarshal(e.Data.Object, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}

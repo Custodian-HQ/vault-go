@@ -58,6 +58,33 @@ type Customer struct {
 	LastName      string    `json:"last_name,omitempty"`
 	NameConfirmed bool      `json:"name_confirmed"`
 	CreatedAt     time.Time `json:"created_at"`
+	// ResetAt is when the customer last confirmed a reset. It is nil if never. While State is "reset: enrolment needed", the customer must enrol again.
+	ResetAt *time.Time `json:"reset_at,omitempty"`
+}
+
+// Who started a reset, as the customer.reset webhook says it.
+const (
+	InitiatedByBusiness        = "business"
+	InitiatedByCustomerRequest = "customer_request"
+)
+
+// CustomerResetRequestedEvent is the object of the customer.reset_requested webhook. The customer asked for a reset; nothing was deleted.
+// To start one, call ResetCustomer. At most 3 requests per customer per day are sent.
+type CustomerResetRequestedEvent struct {
+	ID          string    `json:"id"`
+	ExternalRef string    `json:"external_ref"`
+	Livemode    bool      `json:"livemode"`
+	RequestedAt time.Time `json:"requested_at"`
+}
+
+// CustomerResetEvent is the object of the customer.reset webhook. InitiatedBy is InitiatedByCustomerRequest if a customer.reset_requested came
+// before for this customer, and InitiatedByBusiness if not.
+type CustomerResetEvent struct {
+	ID          string    `json:"id"`
+	ExternalRef string    `json:"external_ref"`
+	Livemode    bool      `json:"livemode"`
+	ResetAt     time.Time `json:"reset_at"`
+	InitiatedBy string    `json:"initiated_by"`
 }
 
 type CustomerPage struct {
@@ -70,6 +97,8 @@ type ListCustomersParams struct {
 	Limit         int
 	StartingAfter string
 	ExternalRef   string
+	// State narrows the list to "active" or "reset: enrolment needed" (reset, and must enrol again).
+	State string
 }
 
 // CreateCustomer makes a customer. Pass WithIdempotencyKey to make a retry safe.
@@ -106,6 +135,9 @@ func (c *Client) ListCustomers(ctx context.Context, p ListCustomersParams) (*Cus
 	}
 	if p.ExternalRef != "" {
 		values.Set("external_ref", p.ExternalRef)
+	}
+	if p.State != "" {
+		values.Set("state", p.State)
 	}
 	return call[CustomerPage](ctx, c, http.MethodGet, "/customers"+query(values), nil)
 }
@@ -210,6 +242,21 @@ func (c *Client) GetRecoveryPolicy(ctx context.Context) (*RecoveryPolicy, error)
 
 func (c *Client) SetRecoveryPolicy(ctx context.Context, threshold int) (*RecoveryPolicy, error) {
 	return call[RecoveryPolicy](ctx, c, http.MethodPut, "/recovery-policy", RecoveryPolicy{RecoveryThreshold: threshold})
+}
+
+// ResetContactText is the text a customer reads after they ask you for a reset.
+type ResetContactText struct {
+	Text string `json:"text"`
+}
+
+// GetResetContactText returns that text: yours, or the default "Contact the business that gave you this link".
+func (c *Client) GetResetContactText(ctx context.Context) (*ResetContactText, error) {
+	return call[ResetContactText](ctx, c, http.MethodGet, "/reset-contact-text", nil)
+}
+
+// SetResetContactText sets it. It is plain text of 1 to 200 characters. The customer always has the button to ask; you cannot turn it off.
+func (c *Client) SetResetContactText(ctx context.Context, text string) (*ResetContactText, error) {
+	return call[ResetContactText](ctx, c, http.MethodPut, "/reset-contact-text", ResetContactText{Text: text})
 }
 
 // WebhookEndpoint is a receiver. Secret is only set when the endpoint is made or its secret is rotated: store it then.
@@ -364,7 +411,8 @@ type DisclosureKey struct {
 	RetiredAt        *time.Time `json:"retired_at"`
 }
 
-// ListDisclosureKeys returns the keys of the key's mode, newest first.
+// ListDisclosureKeys returns the keys of the key's mode, newest first. Keys are registered and retired in the Console, where a
+// member confirms with a code. This API cannot change them.
 func (c *Client) ListDisclosureKeys(ctx context.Context) ([]DisclosureKey, error) {
 	list, err := call[struct {
 		Data []DisclosureKey `json:"data"`
@@ -373,17 +421,6 @@ func (c *Client) ListDisclosureKeys(ctx context.Context) ([]DisclosureKey, error
 		return nil, err
 	}
 	return list.Data, nil
-}
-
-// RegisterDisclosureKey registers a public key, given base64 encoded. It becomes active at once, and the key it replaces keeps
-// working for the grace period. Send only the public key.
-func (c *Client) RegisterDisclosureKey(ctx context.Context, name, suite, publicKey string, opts ...RequestOption) (*DisclosureKey, error) {
-	return call[DisclosureKey](ctx, c, http.MethodPost, "/disclosure-keys", map[string]string{"name": name, "suite": suite, "public_key": publicKey}, opts...)
-}
-
-// RetireDisclosureKey stops a key at once and cancels the requests that wait for it.
-func (c *Client) RetireDisclosureKey(ctx context.Context, id string) (*DisclosureKey, error) {
-	return call[DisclosureKey](ctx, c, http.MethodPost, "/disclosure-keys/"+url.PathEscape(id)+"/retire", nil)
 }
 
 // CreateDisclosureParams asks for a disclosure. Fingerprint is the fingerprint of your disclosure key.

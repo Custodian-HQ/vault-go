@@ -69,6 +69,8 @@ info:
     If a payment fails and the grace period ends, live mode pauses **new** work: a new customer (`402`, code `billing_suspended`) and
     new `enrol`, `entry` and `approve` sessions. Your customers can still recover and manage their own data, and test mode is never paused.
 
+    Custodian staff can also pause a business. The refusals are the same, with the code `business_suspended`. A paused business cannot fetch a disclosed result. Customers can still approve or reject a request that is already open.
+
 servers:
   - url: "{protocol}://{host}/vault/v1"
     description: Custodian Data Vault API
@@ -118,6 +120,46 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Me' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /reset-contact-text:
+    get:
+      tags: [Settings]
+      operationId: getResetContactText
+      summary: Get the contact text for a reset request
+      description: The text a customer reads after they ask you for a reset. It is the default until you set your own. The customer always has the button; you cannot turn it off.
+      responses:
+        '200':
+          description: The text.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResetContactText' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    put:
+      tags: [Settings]
+      operationId: setResetContactText
+      summary: Set the contact text for a reset request
+      description: Plain text, 1 to 200 characters, no control characters. Tell the customer how to reach you.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResetContactText' }
+      responses:
+        '200':
+          description: The text as saved.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResetContactText' }
+        '400':
+          description: The body is not valid (`invalid_body`) or the text is empty, too long or not plain (`invalid_reset_contact_text`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
@@ -199,6 +241,7 @@ paths:
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
         - { name: starting_after, in: query, schema: { type: string } }
         - { name: external_ref, in: query, schema: { type: string } }
+        - { name: state, in: query, description: 'Only customers in this state: `active` or `reset: enrolment needed` (reset, and must enrol again).', schema: { type: string, enum: [active, 'reset: enrolment needed'] } }
       responses:
         '200':
           description: A page of customers.
@@ -261,14 +304,16 @@ paths:
       operationId: resetCustomer
       summary: Start a reset of a customer
       description: |
-        Use this when a customer has lost every way into their vault, including recovery. It starts a `reset` visit and sends nothing else:
+        Use this when a customer has lost every way into their vault, including recovery. A reset starts **only** here: a customer who asks for
+        one on the recovery screen only sends you `customer.reset_requested` (metadata: the customer, your reference and the time), which deletes
+        nothing. At most 3 requests per customer per day. Custodian sends the customer no message. It starts a `reset` visit and sends nothing else:
         **nothing is deleted until the customer confirms** on the hosted page, which tells them the old data cannot be got back. No key is needed.
         Send the customer to the `url` in the answer. It is shown once and works for 15 minutes, once.
 
         When the customer confirms, in one step and with no grace period, the vault deletes all records, files, both key copies, all shares,
         all holders, passkeys and the customer's name. Old data cannot be read again. The customer reference stays, with state
-        `reset_enrolment_needed`, and the customer enrols again with an `enrol` visit. You get `record.deleted` for each old record token,
-        `customer.reset` and `session.completed`. The `customer.enrolled` event of the next enrolment carries a new vault-sign key.
+        `reset: enrolment needed`, and the customer enrols again with an `enrol` visit. You get `record.deleted` for each old record token,
+        `customer.reset` (with `initiated_by`: `customer_request` if a `customer.reset_requested` came before for this customer, else `business`) and `session.completed`. The `customer.enrolled` event of the next enrolment carries a new vault-sign key.
         Your audit log keeps the confirmation. The customer's earlier audit events lose their details.
       parameters:
         - name: id
@@ -354,64 +399,13 @@ paths:
       summary: List disclosure keys
       description: |
         The public keys registered in this mode, newest first, with retired keys. A retiring key stops working at `retires_at`.
+        Keys are registered and retired in the Console only, where a member confirms with a code from their authenticator app. This API cannot change them.
       responses:
         '200':
           description: The keys.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DisclosureKeyList' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '429': { $ref: '#/components/responses/RateLimited' }
-        '500': { $ref: '#/components/responses/ServerError' }
-    post:
-      tags: [Disclosure keys]
-      operationId: registerDisclosureKey
-      summary: Register a disclosure key
-      description: |
-        Registers the **public** key your server opens disclosures with. Make the key pair with the SDK and keep the private key on your server. Send the raw public key, base64 encoded.
-        The new key is active at once. The key that was active keeps working for the grace period (72 hours), so a server that has not moved to the new fingerprint is not cut off.
-        A key that was registered before, in any mode, is refused. Every member who can manage the vault gets an email about the change.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/RegisterDisclosureKey' }
-      responses:
-        '201':
-          description: The key.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/DisclosureKey' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '429': { $ref: '#/components/responses/RateLimited' }
-        '500': { $ref: '#/components/responses/ServerError' }
-
-  /disclosure-keys/{kid}/retire:
-    post:
-      tags: [Disclosure keys]
-      operationId: retireDisclosureKey
-      summary: Retire a disclosure key now
-      description: |
-        Stops the key at once. Requests that wait for this key are cancelled and each sends a `disclosure.cancelled` event. Use it when a key may have leaked.
-      parameters:
-        - name: kid
-          in: path
-          required: true
-          description: The key id, such as `dk_...`.
-          schema: { type: string }
-      responses:
-        '200':
-          description: The retired key.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/DisclosureKey' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/RateLimited' }
@@ -1008,7 +1002,7 @@ components:
         status: { type: string, enum: [enabled, disabled] }
     EventType:
       type: string
-      enum: ["*", session.completed, session.cancelled, session.expired, customer.enrolled, customer.reset, customer.deleted, customer.recovery_status_changed, record.created, record.updated, record.deleted, disclosure.requested, disclosure.approved, disclosure.rejected, disclosure.cancelled, disclosure.expired, disclosure.check_failed, recovery.action_required, recovery.holder_declined]
+      enum: ["*", session.completed, session.cancelled, session.expired, customer.enrolled, customer.reset, customer.reset_requested, customer.deleted, customer.recovery_status_changed, record.created, record.updated, record.deleted, disclosure.requested, disclosure.approved, disclosure.rejected, disclosure.cancelled, disclosure.expired, disclosure.check_failed, customer.sign_in_limit_reached, recovery.action_required, recovery.holder_declined]
     WebhookEndpoint:
       type: object
       properties:
@@ -1057,13 +1051,6 @@ components:
           type: object
           properties:
             object: { type: object, description: The thing that changed, as the API shows it. }
-    RegisterDisclosureKey:
-      type: object
-      required: [name, suite, public_key]
-      properties:
-        name: { type: string, maxLength: 80, example: Signing key 2 }
-        suite: { type: string, enum: [cdv1-xwing-hkdf256-aes256gcm, cdv1-x25519-hkdf256-aes256gcm] }
-        public_key: { type: string, description: The raw public key, base64 encoded. }
     DisclosureKey:
       type: object
       properties:
@@ -1146,13 +1133,14 @@ components:
         id: { type: string, example: cus_0f8a1c2d3e4f5a6b7c8d9e0f1a2b3c4d }
         external_ref: { type: string }
         livemode: { type: boolean }
-        state: { type: string, enum: [active, reset_enrolment_needed] }
+        state: { type: string, enum: [active, 'reset: enrolment needed'] }
         enrolled: { type: boolean, description: True once the customer has enrolled in the vault. }
         first_name: { type: string, description: The name the customer confirmed, or the name you offered until they confirm. }
         last_name: { type: string }
         name_confirmed: { type: boolean, description: True once the customer confirmed or corrected the name at enrolment. After that the name cannot be changed through the API. }
         vault_sign_key: { type: string, description: The customer's public signing key, base64url. The customer signs every disclosure with it. Keep the one from the `customer.enrolled` webhook and check envelopes against that one; do not rely on this field alone. }
         created_at: { type: string, format: date-time }
+        reset_at: { type: string, format: date-time, description: 'When the customer last confirmed a reset. Empty if never. While `state` is `reset: enrolment needed`, the customer must enrol again.' }
     CustomerPage:
       type: object
       properties:
@@ -1244,6 +1232,11 @@ components:
       type: object
       properties:
         data: { type: array, items: { $ref: '#/components/schemas/Template' } }
+    ResetContactText:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string, minLength: 1, maxLength: 200, default: Contact the business that gave you this link }
     RecoveryPolicy:
       type: object
       required: [recovery_threshold]
@@ -1282,7 +1275,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
     PaymentRequired:
-      description: Live mode is closed. The code is `billing_suspended` when a payment failed and the grace period ended, or `billing_payment_required` when the first fee of a plan the business chose is not paid yet. Pay the open invoice in the console.
+      description: Live mode is closed. The code is `billing_suspended` when a payment failed and the grace period ended, or `billing_payment_required` when the first fee of a plan the business chose is not paid yet. Pay the open invoice in the console. The code is `business_suspended` when Custodian staff paused the business.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
