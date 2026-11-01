@@ -372,12 +372,18 @@ func (c *Client) GetUsage(ctx context.Context, from, to time.Time) (*Usage, erro
 
 // AuditEvent is one entry of the audit log.
 type AuditEvent struct {
-	ID         int64          `json:"id"`
-	Type       string         `json:"type"`
-	OccurredAt time.Time      `json:"occurred_at"`
-	User       string         `json:"user,omitempty"`
-	APIKey     string         `json:"api_key,omitempty"`
-	Payload    map[string]any `json:"payload,omitempty"`
+	ID         int64     `json:"id"`
+	Type       string    `json:"type"`
+	OccurredAt time.Time `json:"occurred_at"`
+	User       string    `json:"user,omitempty"`
+	UserEmail  string    `json:"user_email,omitempty"`
+	// Staff is true when Custodian staff caused the event. User and UserEmail are empty then.
+	Staff       bool   `json:"staff,omitempty"`
+	APIKeyLabel string `json:"api_key_label,omitempty"`
+	// Livemode is nil for a change to the whole organization.
+	Livemode *bool          `json:"livemode,omitempty"`
+	APIKey   string         `json:"api_key,omitempty"`
+	Payload  map[string]any `json:"payload,omitempty"`
 }
 
 func (c *Client) ListAuditEvents(ctx context.Context, limit int, startingAfter int64) ([]AuditEvent, error) {

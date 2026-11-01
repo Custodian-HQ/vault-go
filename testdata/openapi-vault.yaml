@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Custodian Data Vault API
-  version: 0.1.0
+  version: 1.0.0-beta
   summary: The business API of Custodian Data Vault.
   description: |
     Your servers use this API to start customer sessions, read results and manage the vault's settings. Customers never
@@ -979,6 +979,7 @@ components:
         occurred_at: { type: string, format: date-time }
         user: { type: string, description: The member who made the change, for a console change. }
         user_email: { type: string, description: The email of that member. }
+        staff: { type: boolean, description: "True when Custodian staff caused the event. The console shows it as a platform admin, not a member. `user` and `user_email` are empty then: a business never learns which staff member acted, and cannot search for staff by email." }
         api_key_label: { type: string, description: "The key that made the change, as its start and last 4 characters, such as `cdv_test_Qa7x…m2Lp`." }
         livemode: { type: boolean, description: The mode the event belongs to. Missing for a change to the whole organization. }
         api_key: { type: string, description: The key that made the change, for an API change. }

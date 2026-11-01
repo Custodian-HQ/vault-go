@@ -303,3 +303,22 @@ func TestCreateCustomerNamedSendsTheNameThatIsOffered(t *testing.T) {
 		t.Errorf("body: %v", body)
 	}
 }
+
+func TestAuditEventReadsEveryFieldOfTheSpec(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"data":[{"id":7,"type":"business.suspended","occurred_at":"2026-10-29T10:00:00Z","staff":true},{"id":8,"type":"api_key.created","occurred_at":"2026-10-29T11:00:00Z","user":"usr_1","user_email":"a@example.com","api_key_label":"cdv_test_Qa7x…m2Lp","livemode":false,"api_key":"key_1","payload":{"k":"v"}}],"total":2}`))
+	}))
+	defer server.Close()
+	c, _ := New("k", WithBaseURL(server.URL))
+	events, err := c.ListAuditEvents(context.Background(), 5, 0)
+	if err != nil || len(events) != 2 {
+		t.Fatalf("events %v, err %v", events, err)
+	}
+	if !events[0].Staff || events[0].User != "" || events[0].UserEmail != "" || events[0].Livemode != nil {
+		t.Fatalf("staff event read wrong: %+v", events[0])
+	}
+	e := events[1]
+	if e.Staff || e.UserEmail != "a@example.com" || e.APIKeyLabel != "cdv_test_Qa7x…m2Lp" || e.Livemode == nil || *e.Livemode || e.APIKey != "key_1" {
+		t.Fatalf("api event read wrong: %+v", e)
+	}
+}

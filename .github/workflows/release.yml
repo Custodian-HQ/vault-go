@@ -1,0 +1,28 @@
+name: release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.3'
+      - run: make check
+      - name: The tag must match the API spec version
+        run: scripts/check-version.sh "$GITHUB_REF_NAME"
+      - name: GitHub release
+        run: |
+          case "$GITHUB_REF_NAME" in *-*) flag=--prerelease ;; *) flag= ;; esac
+          gh release create "$GITHUB_REF_NAME" --generate-notes $flag
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: A clean module can fetch this tag
+        run: |
+          mkdir "$RUNNER_TEMP/clean" && cd "$RUNNER_TEMP/clean"
+          go mod init example.com/clean
+          GOFLAGS=-mod=mod GOPROXY=direct go get "github.com/${GITHUB_REPOSITORY}@${GITHUB_REF_NAME}"
