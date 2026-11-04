@@ -44,11 +44,11 @@ func (c *Client) Me(ctx context.Context) (*Me, error) {
 
 // Customer is a person who keeps data in your vault.
 type Customer struct {
-	ID          string `json:"id"`
-	ExternalRef string `json:"external_ref"`
-	Livemode    bool   `json:"livemode"`
-	State       string `json:"state"`
-	Enrolled    bool   `json:"enrolled"`
+	ID          string        `json:"id"`
+	ExternalRef string        `json:"external_ref"`
+	Livemode    bool          `json:"livemode"`
+	State       CustomerState `json:"state"`
+	Enrolled    bool          `json:"enrolled"`
 	// VaultSignKey is the customer's public signing key, base64url. Keep the one you got in the customer.enrolled webhook and check envelopes
 	// against that one; do not rely on this field alone.
 	VaultSignKey string `json:"vault_sign_key,omitempty"`
@@ -97,8 +97,8 @@ type ListCustomersParams struct {
 	Limit         int
 	StartingAfter string
 	ExternalRef   string
-	// State narrows the list to "active" or "reset: enrolment needed" (reset, and must enrol again).
-	State string
+	// State narrows the list to CustomerActive or CustomerResetEnrolmentNeeded (reset, and must enrol again).
+	State CustomerState
 }
 
 // CreateCustomer makes a customer. Pass WithIdempotencyKey to make a retry safe.
@@ -137,7 +137,7 @@ func (c *Client) ListCustomers(ctx context.Context, p ListCustomersParams) (*Cus
 		values.Set("external_ref", p.ExternalRef)
 	}
 	if p.State != "" {
-		values.Set("state", p.State)
+		values.Set("state", string(p.State))
 	}
 	return call[CustomerPage](ctx, c, http.MethodGet, "/customers"+query(values), nil)
 }
@@ -157,12 +157,12 @@ type Key struct {
 // CreateSessionParams starts a visit. ReturnURL must be one you registered for the key's mode. State is required: pass a value
 // you can tie to your signed-in user, and check it when the customer returns (see ParseReturn).
 type CreateSessionParams struct {
-	Customer  string `json:"customer"`
-	Purpose   string `json:"purpose"`
-	ReturnURL string `json:"return_url"`
-	State     string `json:"state"`
-	Template  string `json:"template,omitempty"`
-	Keys      []Key  `json:"keys,omitempty"`
+	Customer  string  `json:"customer"`
+	Purpose   Purpose `json:"purpose"`
+	ReturnURL string  `json:"return_url"`
+	State     string  `json:"state"`
+	Template  string  `json:"template,omitempty"`
+	Keys      []Key   `json:"keys,omitempty"`
 	// Record is the record token. A view needs it. An entry may name one to add keys to that record.
 	Record     string `json:"record,omitempty"`
 	Disclosure string `json:"disclosure,omitempty"`
@@ -170,17 +170,17 @@ type CreateSessionParams struct {
 
 // Session is one visit of a customer to the vault. URL is only set by CreateSession.
 type Session struct {
-	ID          string     `json:"id"`
-	Customer    string     `json:"customer"`
-	Purpose     string     `json:"purpose"`
-	Status      string     `json:"status"`
-	Livemode    bool       `json:"livemode"`
-	ReturnURL   string     `json:"return_url"`
-	State       string     `json:"state"`
-	ExpiresAt   time.Time  `json:"expires_at"`
-	CreatedAt   time.Time  `json:"created_at"`
-	CompletedAt *time.Time `json:"completed_at,omitempty"`
-	CancelledAt *time.Time `json:"cancelled_at,omitempty"`
+	ID          string        `json:"id"`
+	Customer    string        `json:"customer"`
+	Purpose     Purpose       `json:"purpose"`
+	Status      SessionStatus `json:"status"`
+	Livemode    bool          `json:"livemode"`
+	ReturnURL   string        `json:"return_url"`
+	State       string        `json:"state"`
+	ExpiresAt   time.Time     `json:"expires_at"`
+	CreatedAt   time.Time     `json:"created_at"`
+	CompletedAt *time.Time    `json:"completed_at,omitempty"`
+	CancelledAt *time.Time    `json:"cancelled_at,omitempty"`
 	// Record is the record this visit added to or shows. For an entry that makes a new record, it is set once the customer saved.
 	Record   string   `json:"record,omitempty"`
 	URL      string   `json:"url,omitempty"`
@@ -259,19 +259,14 @@ func (c *Client) SetResetContactText(ctx context.Context, text string) (*ResetCo
 	return call[ResetContactText](ctx, c, http.MethodPut, "/reset-contact-text", ResetContactText{Text: text})
 }
 
-// WebhookEndpoint is a receiver. Secret is only set when the endpoint is made or its secret is rotated: store it then.
+// WebhookEndpoint is a receiver. A member makes, changes, deletes and rotates endpoints in the Console only. With an API key you can only list them.
 type WebhookEndpoint struct {
-	ID        string    `json:"id"`
-	URL       string    `json:"url"`
-	Events    []string  `json:"events"`
-	Livemode  bool      `json:"livemode"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-	Secret    string    `json:"secret,omitempty"`
-}
-
-func (c *Client) CreateWebhookEndpoint(ctx context.Context, endpointURL string, events []string, opts ...RequestOption) (*WebhookEndpoint, error) {
-	return call[WebhookEndpoint](ctx, c, http.MethodPost, "/webhook-endpoints", map[string]any{"url": endpointURL, "events": events}, opts...)
+	ID        string                `json:"id"`
+	URL       string                `json:"url"`
+	Events    []string              `json:"events"`
+	Livemode  bool                  `json:"livemode"`
+	Status    WebhookEndpointStatus `json:"status"`
+	CreatedAt time.Time             `json:"created_at"`
 }
 
 func (c *Client) ListWebhookEndpoints(ctx context.Context) ([]WebhookEndpoint, error) {
@@ -284,38 +279,18 @@ func (c *Client) ListWebhookEndpoints(ctx context.Context) ([]WebhookEndpoint, e
 	return page.Data, nil
 }
 
-// WebhookEndpointUpdate says what to change. A nil or empty field stays as it is.
-type WebhookEndpointUpdate struct {
-	URL    *string  `json:"url,omitempty"`
-	Events []string `json:"events,omitempty"`
-	Status *string  `json:"status,omitempty"`
-}
-
-func (c *Client) UpdateWebhookEndpoint(ctx context.Context, id string, u WebhookEndpointUpdate) (*WebhookEndpoint, error) {
-	return call[WebhookEndpoint](ctx, c, http.MethodPut, "/webhook-endpoints/"+url.PathEscape(id), u)
-}
-
-func (c *Client) DeleteWebhookEndpoint(ctx context.Context, id string) error {
-	return c.Do(ctx, http.MethodDelete, "/webhook-endpoints/"+url.PathEscape(id), nil, nil)
-}
-
-// RotateWebhookSecret replaces the signing secret. The old one stops working at once.
-func (c *Client) RotateWebhookSecret(ctx context.Context, id string) (*WebhookEndpoint, error) {
-	return call[WebhookEndpoint](ctx, c, http.MethodPost, "/webhook-endpoints/"+url.PathEscape(id)+"/rotate-secret", nil)
-}
-
 // WebhookDelivery is one event on its way to one endpoint.
 type WebhookDelivery struct {
-	ID          int64      `json:"id"`
-	Endpoint    string     `json:"endpoint"`
-	Event       string     `json:"event"`
-	Type        string     `json:"type"`
-	Status      string     `json:"status"`
-	Attempts    int        `json:"attempts"`
-	LastStatus  *int       `json:"last_status,omitempty"`
-	LastError   *string    `json:"last_error,omitempty"`
-	CreatedAt   time.Time  `json:"created_at"`
-	CompletedAt *time.Time `json:"completed_at,omitempty"`
+	ID          int64                 `json:"id"`
+	Endpoint    string                `json:"endpoint"`
+	Event       string                `json:"event"`
+	Type        string                `json:"type"`
+	Status      WebhookDeliveryStatus `json:"status"`
+	Attempts    int                   `json:"attempts"`
+	LastStatus  *int                  `json:"last_status,omitempty"`
+	LastError   *string               `json:"last_error,omitempty"`
+	CreatedAt   time.Time             `json:"created_at"`
+	CompletedAt *time.Time            `json:"completed_at,omitempty"`
 }
 
 type ListDeliveriesParams struct {
@@ -404,17 +379,17 @@ func (c *Client) ListAuditEvents(ctx context.Context, limit int, startingAfter i
 // DisclosureKey is a public key you receive disclosures with. Fingerprint is not a secret: keep it in your app config and send it
 // with every disclosure request.
 type DisclosureKey struct {
-	ID               string     `json:"id"`
-	Name             string     `json:"name"`
-	Suite            string     `json:"suite"`
-	PublicKey        string     `json:"public_key"`
-	Fingerprint      string     `json:"fingerprint"`
-	FingerprintShort string     `json:"fingerprint_short"`
-	Status           string     `json:"status"`
-	Livemode         bool       `json:"livemode"`
-	RegisteredAt     time.Time  `json:"registered_at"`
-	RetiresAt        *time.Time `json:"retires_at"`
-	RetiredAt        *time.Time `json:"retired_at"`
+	ID               string              `json:"id"`
+	Name             string              `json:"name"`
+	Suite            string              `json:"suite"`
+	PublicKey        string              `json:"public_key"`
+	Fingerprint      string              `json:"fingerprint"`
+	FingerprintShort string              `json:"fingerprint_short"`
+	Status           DisclosureKeyStatus `json:"status"`
+	Livemode         bool                `json:"livemode"`
+	RegisteredAt     time.Time           `json:"registered_at"`
+	RetiresAt        *time.Time          `json:"retires_at"`
+	RetiredAt        *time.Time          `json:"retired_at"`
 }
 
 // ListDisclosureKeys returns the keys of the key's mode, newest first. Keys are registered and retired in the Console, where a
@@ -444,16 +419,16 @@ type CreateDisclosureParams struct {
 
 // Disclosure is a request to see named keys of one record. It holds names only, never values.
 type Disclosure struct {
-	ID        string     `json:"id"`
-	Record    string     `json:"record"`
-	Customer  string     `json:"customer"`
-	Keys      []string   `json:"keys"`
-	Reason    string     `json:"reason"`
-	Status    string     `json:"status"`
-	Livemode  bool       `json:"livemode"`
-	KeyID     string     `json:"disclosure_key"`
-	ExpiresAt time.Time  `json:"expires_at"`
-	DecidedAt *time.Time `json:"decided_at"`
+	ID        string           `json:"id"`
+	Record    string           `json:"record"`
+	Customer  string           `json:"customer"`
+	Keys      []string         `json:"keys"`
+	Reason    string           `json:"reason"`
+	Status    DisclosureStatus `json:"status"`
+	Livemode  bool             `json:"livemode"`
+	KeyID     string           `json:"disclosure_key"`
+	ExpiresAt time.Time        `json:"expires_at"`
+	DecidedAt *time.Time       `json:"decided_at"`
 	// AckedAt is when you acknowledged the envelope; the vault deleted it then. EnvelopeReady is true while you can still fetch it.
 	AckedAt       *time.Time `json:"acked_at"`
 	EnvelopeReady bool       `json:"envelope_ready"`
@@ -465,9 +440,9 @@ type DisclosurePage struct {
 	HasMore bool         `json:"has_more"`
 }
 
-// ListDisclosuresParams narrows and pages the list. Status is pending, approved, rejected, cancelled or expired.
+// ListDisclosuresParams narrows and pages the list. Status is one of the DisclosureStatus values.
 type ListDisclosuresParams struct {
-	Status        string
+	Status        DisclosureStatus
 	Limit         int
 	StartingAfter string
 }
@@ -484,7 +459,7 @@ func (c *Client) GetDisclosure(ctx context.Context, id string) (*Disclosure, err
 func (c *Client) ListDisclosures(ctx context.Context, p ListDisclosuresParams) (*DisclosurePage, error) {
 	values := url.Values{}
 	if p.Status != "" {
-		values.Set("status", p.Status)
+		values.Set("status", string(p.Status))
 	}
 	addInt(values, "limit", p.Limit)
 	if p.StartingAfter != "" {

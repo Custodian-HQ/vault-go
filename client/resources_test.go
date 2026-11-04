@@ -77,7 +77,7 @@ func TestEverySDKMethodMatchesTheSpecAndTheSpecIsFullyCovered(t *testing.T) {
 	_, _ = c.ListCustomers(ctx, ListCustomersParams{Limit: 5, StartingAfter: "cus_1", ExternalRef: "x", State: "reset: enrolment needed"})
 	_, _ = c.GetResetContactText(ctx)
 	_, _ = c.SetResetContactText(ctx, "Call us")
-	_, _ = c.CreateSession(ctx, CreateSessionParams{Customer: "cus_1", Purpose: "enrol", ReturnURL: "https://a.example/x", State: "s"})
+	_, _ = c.CreateSession(ctx, CreateSessionParams{Customer: "cus_1", Purpose: PurposeEnrol, ReturnURL: "https://a.example/x", State: "s"})
 	_, _ = c.GetSession(ctx, "ses_1")
 	_, _ = c.ListRecords(ctx, ListRecordsParams{Customer: "cus_1", Limit: 5, StartingAfter: "rec_1"})
 	_, _ = c.GetRecord(ctx, "rec_1")
@@ -88,11 +88,7 @@ func TestEverySDKMethodMatchesTheSpecAndTheSpecIsFullyCovered(t *testing.T) {
 	_ = c.DeleteTemplate(ctx, "kyc")
 	_, _ = c.GetRecoveryPolicy(ctx)
 	_, _ = c.SetRecoveryPolicy(ctx, 3)
-	_, _ = c.CreateWebhookEndpoint(ctx, "https://a.example/h", []string{"*"})
 	_, _ = c.ListWebhookEndpoints(ctx)
-	_, _ = c.UpdateWebhookEndpoint(ctx, "we_1", WebhookEndpointUpdate{Events: []string{"*"}})
-	_ = c.DeleteWebhookEndpoint(ctx, "we_1")
-	_, _ = c.RotateWebhookSecret(ctx, "we_1")
 	_, _ = c.ListWebhookDeliveries(ctx, ListDeliveriesParams{Endpoint: "we_1", Limit: 5, StartingAfter: 9})
 	_ = c.RetryWebhookDelivery(ctx, 7)
 	_, _ = c.ListDisclosureKeys(ctx)
@@ -151,7 +147,7 @@ func TestResourceMethodsSendAndReadTheRightShapes(t *testing.T) {
 	c, _ := New("k", WithBaseURL(server.URL))
 	ctx := context.Background()
 
-	session, err := c.CreateSession(ctx, CreateSessionParams{Customer: "cus_1", Purpose: "entry", ReturnURL: "https://a.example/x", State: "s", Keys: []Key{{Name: "id_document", Type: "file"}}})
+	session, err := c.CreateSession(ctx, CreateSessionParams{Customer: "cus_1", Purpose: PurposeEntry, ReturnURL: "https://a.example/x", State: "s", Keys: []Key{{Name: "id_document", Type: "file"}}})
 	if err != nil || session.URL == "" || session.Status != "created" || session.ExpiresAt.IsZero() {
 		t.Fatalf("session: %+v %v", session, err)
 	}

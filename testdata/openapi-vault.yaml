@@ -100,7 +100,12 @@ tags:
   - name: Disclosures
     description: Requests to see named keys of one customer. The customer decides.
   - name: Webhooks
-    description: Events sent to your servers, signed, with a delivery log.
+    description: |
+      Events sent to your servers, signed, with a delivery log. A member makes, changes, deletes and rotates endpoints and their signing secrets in the console only, where the member types a code. An API key can only list endpoints and deliveries and retry a delivery, and no answer of this API holds a secret.
+
+      **Verify every delivery.** Each request has a header `Custodian-Signature: t=<unix seconds>,v1=<hex>`. Compute `HMAC-SHA256(secret, t + "." + raw body)`, compare it with `v1` in constant time, and refuse a request whose `t` is more than 5 minutes from your clock. The SDKs do this for you.
+
+      Answer with any 2xx quickly. Anything else, or no answer within 10 seconds, is retried with growing waits for up to 3 days. The same event can arrive more than once: use `id` to ignore repeats.
   - name: Usage
     description: What you used, and the audit log.
   - name: Settings
@@ -745,31 +750,6 @@ paths:
         '500': { $ref: '#/components/responses/ServerError' }
 
   /webhook-endpoints:
-    post:
-      tags: [Webhooks]
-      operationId: createWebhookEndpoint
-      summary: Create a webhook endpoint
-      description: |
-        Makes an endpoint in the key's mode. The signing secret (`whsec_...`) is in the answer **once**: store it. The URL must use https on port 443 and a public DNS name. These are refused: IP addresses, `localhost`, internal names (such as `.local`, `.internal`, `.corp`), user names in the URL, fragments, and any name that resolves to a private, loopback, link-local or other non-public address. The name is checked again at every delivery. Name the events you want, or `*` for all. Up to 10 endpoints per mode.
-        
-        **Verify every delivery.** Each request has a header `Custodian-Signature: t=<unix seconds>,v1=<hex>`. Compute `HMAC-SHA256(secret, t + "." + raw body)`, compare it with `v1` in constant time, and refuse a request whose `t` is more than 5 minutes from your clock. The SDKs do this for you.
-        
-        Answer with any 2xx quickly. Anything else, or no answer within 10 seconds, is retried with growing waits for up to 3 days. The same event can arrive more than once: use `id` to ignore repeats.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/CreateWebhookEndpoint' }
-      responses:
-        '201':
-          description: The endpoint, with its secret.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/WebhookEndpoint' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '429': { $ref: '#/components/responses/RateLimited' }
-        '500': { $ref: '#/components/responses/ServerError' }
     get:
       tags: [Webhooks]
       operationId: listWebhookEndpoints
@@ -783,79 +763,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/WebhookEndpointList' }
         '401': { $ref: '#/components/responses/Unauthorized' }
-        '429': { $ref: '#/components/responses/RateLimited' }
-        '500': { $ref: '#/components/responses/ServerError' }
-
-  /webhook-endpoints/{id}:
-    put:
-      tags: [Webhooks]
-      operationId: updateWebhookEndpoint
-      summary: Change a webhook endpoint
-      description: |
-        Send only what changes: `url`, `events` or `status` (`enabled` or `disabled`). A disabled endpoint gets no new events, and jobs waiting for it end.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: The endpoint id, such as `we_...`.
-          schema: { type: string }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/UpdateWebhookEndpoint' }
-      responses:
-        '200':
-          description: The endpoint.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/WebhookEndpoint' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '429': { $ref: '#/components/responses/RateLimited' }
-        '500': { $ref: '#/components/responses/ServerError' }
-    delete:
-      tags: [Webhooks]
-      operationId: deleteWebhookEndpoint
-      summary: Delete a webhook endpoint
-      description: |
-        Jobs still waiting for it end on their next try.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: The endpoint id.
-          schema: { type: string }
-      responses:
-        '204':
-          description: Deleted.
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '429': { $ref: '#/components/responses/RateLimited' }
-        '500': { $ref: '#/components/responses/ServerError' }
-
-  /webhook-endpoints/{id}/rotate-secret:
-    post:
-      tags: [Webhooks]
-      operationId: rotateWebhookSecret
-      summary: Replace the signing secret
-      description: |
-        The old secret stops working at once, including for deliveries already waiting. The new one is in the answer once.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: The endpoint id.
-          schema: { type: string }
-      responses:
-        '200':
-          description: The endpoint, with its new secret.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/WebhookEndpoint' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
 
@@ -989,18 +896,6 @@ components:
       properties:
         data: { type: array, items: { $ref: '#/components/schemas/AuditEvent' } }
         total: { type: integer, description: How many events match the filters in all, not only on this page. }
-    CreateWebhookEndpoint:
-      type: object
-      required: [url, events]
-      properties:
-        url: { type: string, example: https://example.com/custodian/webhook }
-        events: { type: array, items: { $ref: '#/components/schemas/EventType' } }
-    UpdateWebhookEndpoint:
-      type: object
-      properties:
-        url: { type: string }
-        events: { type: array, items: { $ref: '#/components/schemas/EventType' } }
-        status: { type: string, enum: [enabled, disabled] }
     EventType:
       type: string
       enum: ["*", session.completed, session.cancelled, session.expired, customer.enrolled, customer.reset, customer.reset_requested, customer.deleted, customer.recovery_status_changed, record.created, record.updated, record.deleted, disclosure.requested, disclosure.approved, disclosure.rejected, disclosure.cancelled, disclosure.expired, disclosure.check_failed, customer.sign_in_limit_reached, recovery.action_required, recovery.holder_declined]
@@ -1013,7 +908,6 @@ components:
         livemode: { type: boolean }
         status: { type: string, enum: [enabled, disabled] }
         created_at: { type: string, format: date-time }
-        secret: { type: string, description: The signing secret. Only when the endpoint is made or its secret rotated. }
         secret_last4: { type: string, description: The last 4 characters of the signing secret, to tell secrets apart. }
         failing_deliveries: { type: integer, description: Events still retrying, plus events that gave up in the last 24 hours. Filled in lists. }
         last_delivery_at: { type: string, format: date-time, description: When the newest event for this endpoint was delivered, gave up, or was queued. Only in lists. }

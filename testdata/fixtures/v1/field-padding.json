@@ -1,0 +1,61 @@
+{
+  "cases": [
+    {
+      "length": 0,
+      "class": 16,
+      "padded_hex": "00000000000000000000000000000000"
+    },
+    {
+      "length": 1,
+      "class": 16,
+      "padded_hex": "00000001ab0000000000000000000000"
+    },
+    {
+      "length": 12,
+      "class": 16,
+      "padded_hex": "0000000cabababababababababababab"
+    },
+    {
+      "length": 13,
+      "class": 32,
+      "padded_hex": "0000000dababababababababababababab000000000000000000000000000000"
+    },
+    {
+      "length": 28,
+      "class": 32,
+      "padded_hex": "0000001cabababababababababababababababababababababababababababab"
+    },
+    {
+      "length": 29,
+      "class": 64,
+      "padded_hex": "0000001dababababababababababababababababababababababababababababab00000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "length": 60,
+      "class": 64,
+      "padded_hex": "0000003cabababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab"
+    },
+    {
+      "length": 61,
+      "class": 128,
+      "padded_hex": "0000003dababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "length": 100,
+      "class": 128,
+      "padded_hex": "00000064abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab000000000000000000000000000000000000000000000000"
+    },
+    {
+      "length": 65532,
+      "class": 65536
+    },
+    {
+      "length": 65533,
+      "class": 131072
+    }
+  ],
+  "min_class": 16,
+  "prefix_size": 4,
+  "rule": "padded = length (4 bytes, big endian) || value || zero bytes, to the smallest power of two that is at least 16 and at least 4 + length",
+  "value_byte": "ab"
+}

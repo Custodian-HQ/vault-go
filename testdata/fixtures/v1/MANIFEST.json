@@ -6,6 +6,7 @@
     "disclosure-envelope.json": "cf295fb82a7d5401898a0ca15ef0ba2e5debb5e9a361de6f2beb2bbe4245e397",
     "disclosure-key-fingerprint.json": "f62393699c4e2b8b75b85b78c532edd4b660bbcba2271079cd3f32c8e5010910",
     "envelope.json": "3aa98474e878e95c8e90f50d8354d890277b8448a71f905e8ca35d0b3711584f",
+    "field-padding.json": "d95190e4f5e9660ef04d85a2ca755ff8a718f71f7600c825b2c5dcf80b615510",
     "file-stream.json": "9a95be489f3812c44515c679bbce7ad601a96e74746c8117ea63a5fe0bb7a848",
     "holder-wrap.json": "bd2cbe1ee884a3d50ec6b409779e1c11189934dbdb87d11a2921dd8a78393b1d",
     "hpke-xwing-aes256gcm-sample.json": "d3c8dcd5a2ccf022fb5b86eb236752378acad1b30f7cb8265ef26627b61f08b6",
@@ -15,7 +16,7 @@
     "pedersen-h.json": "090dbec3c60485016fecb4cd70bbf68acdd99c036b55eca7a87e191f7983a9ff",
     "pedersen.json": "79994423b690acff06e79b4a733b4d678e5d372f03a36abdda50697d52bfeca0",
     "secret-normalization.json": "d1be485105d0fef1376cdcfe0fac1d2a273da1edae112b74499730e0d92b2296",
-    "share-envelope.json": "a3c3f66c34d6892d95c0d868aca84adde0f75614a00cea3e9cbc94e3cec9054d",
+    "share-envelope.json": "e8c069daf4f2e0d9785e551444b2e7dbc9fefea10695ee67fd04697be4fcbdae",
     "sign.json": "36abdeb32a5433150f0e81cdf7859b28a5b767d1e80f335f29e1fd72f687b2ae",
     "webhook-signature.json": "376ce5a6d39d77e14d41733d7e224699c9d973aa011449eaa8f38c1fcf1de0bb",
     "zstd-records.json": "b6e9c851049bd8de856dcdbe4445fee941806652e63403fa0ebe12d48df3afce"
