@@ -25,7 +25,8 @@ make a customer, send them to the vault, hear what happened, and ask to see a va
 6. [Other things a customer can do](#6-other-things-a-customer-can-do)
 7. [Ask to see a value](#7-ask-to-see-a-value)
 8. [Open the values](#8-open-the-values)
-9. [Handle errors](#9-handle-errors)
+9. [Receive files](#9-receive-files)
+10. [Handle errors](#10-handle-errors)
 
 Words used in this guide:
 
@@ -251,6 +252,8 @@ fmt.Println(opened.Fields) // map[full_name:... date_of_birth:...]
 _, err = c.AckDisclosure(ctx, request.ID)
 ```
 
+`Keys` names the values only. If the request also names files, put their names in `Files` instead (step 9).
+
 If a check fails, the library returns an error. **Do not use the values.** Never fall back to a key that you fetched from Custodian.
 Use `errors.Is` to see which check failed.
 
@@ -262,7 +265,55 @@ Use `errors.Is` to see which check failed.
 | `ErrRequest`, `ErrBusiness`, `ErrCustomer`, `ErrKey` | The envelope is for something else than you asked. |
 | `ErrFormat`, `ErrPayload`, `ErrCommitment` | The envelope is damaged, or its content is not what the customer approved. |
 
-## 9. Handle errors
+## 9. Receive files
+
+A request can also name file keys, alone or with values. Ask for them in `Keys` as usual. The envelope then holds a key for each
+file, not the file. You download the encrypted file and the library decrypts it on your server.
+
+```go
+// 1. Open the envelope as in step 8. Name the values in Keys and the files in Files.
+opened, err := disclosure.OpenEnvelopeFor(store, raw, disclosure.Expected{
+	RequestID: request.ID, BusinessID: me.Organization, CustomerID: customer.ID, KID: request.KeyID,
+	Keys:  []string{"full_name"},
+	Files: []string{"passport"},
+	Suite: suite, PrivateKey: private,
+})
+if err != nil {
+	return err
+}
+
+// 2. Download the encrypted file and decrypt it as you read. Download before you call AckDisclosure.
+body, err := c.DownloadDisclosedFile(ctx, request.ID, "passport", client.DownloadFileParams{})
+if err != nil {
+	return err
+}
+defer body.Close()
+file, err := opened.OpenFile("passport", body)
+if err != nil {
+	return err
+}
+defer file.Close() // also clears the file key
+if _, err := io.Copy(out, file); err != nil {
+	return err // do not use the file
+}
+
+// 3. Discard the keys you no longer need, then acknowledge.
+opened.Discard()
+_, err = c.AckDisclosure(ctx, request.ID)
+```
+
+- `OpenFile` works once for each key: `Close` clears the key, and a second try gives `disclosure.ErrFileKeyCleared`. To try again,
+  fetch and open the envelope again before you acknowledge it.
+- The download works only while the envelope exists: until you acknowledge it, or 15 minutes after the customer approves.
+- A file key opens that one file only. The customer cannot take it back, so use the file, then discard the key. Do not store it.
+- Read the file to the end before you keep it. A file that was cut short or changed fails, sometimes only at the end
+  (`disclosure.ErrFileTruncated`, `ErrFileOpen`). A file that was sealed to another key fails at once (`ErrFileCommitment`).
+- The library does not check the file type. Check it again before you use the file, as for any upload.
+- If the customer replaced or removed the file after approving, the download fails with `client.ErrFileReplaced`. Ask again.
+- A busy vault answers `429 busy`. Try again in a moment. To resume a large download, save it to disk and use
+  `DownloadFileParams{Range: ...}`; decrypt the whole file once you have all of it.
+
+## 10. Handle errors
 
 Every failed API call returns an `*client.APIError`. Use `errors.As` to read it.
 
@@ -295,3 +346,6 @@ Run `make check`. It runs `gofmt`, `go vet` and the tests with the race detector
 ## Licence
 
 MIT. See [LICENSE](LICENSE).
+
+The `disclosure` package uses [klauspost/compress](https://github.com/klauspost/compress) (v1.18.6) to read compressed files. It is
+under the BSD 3-Clause licence; its notice is in the module's `LICENSE` file.

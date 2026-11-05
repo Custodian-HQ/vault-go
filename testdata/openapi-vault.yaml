@@ -25,6 +25,11 @@ info:
       key and the same request returns the first answer, marked `Idempotent-Replayed: true`. The same key with a different request
       returns `422 idempotency_key_reused`. A repeat while the first is still running returns `409 idempotency_key_in_progress`.
       Answers are kept for 24 hours. An answer of 500 or above is not kept, so a retry runs again.
+      A call that returns a one-time link (starting a session, starting a customer reset) is the exception: its repeat returns the
+      stored answer **without** `url`, with `secret_not_replayable: true`, and only for as long as the link lives (15 minutes). To get a
+      new link, make a new session or reset with a new key. If the store for repeat protection is down, the call still runs, without
+      repeat protection, and the answer carries `Idempotency-Unavailable: true`.
+    - **Request id:** every answer carries the header `X-Request-Id`. An error body holds the same value as `error.request_id`.
     - **Limits:** the number of requests a key may make comes from your plan, and test mode may have a lower limit. Over the limit
       you get `429` with `Retry-After`.
 
@@ -355,7 +360,7 @@ paths:
       operationId: listRecords
       summary: List a customer's records
       description: |
-        Returns the token and the key names of each record, newest first. You never see a value: values are encrypted on the customer's device,
+        Returns the token and the key names of each record, newest first. A finished file is listed as a key with the type `file`, `version` 1 and the time it finished; it has no label. You never see a value: values are encrypted on the customer's device,
         and only a disclosure the customer approves reaches you. Use `starting_after` with the token of the last record of the previous page.
       parameters:
         - { name: customer, in: query, required: true, description: The customer id., schema: { type: string } }
@@ -379,7 +384,7 @@ paths:
       operationId: getRecord
       summary: Get a record
       description: |
-        Returns the token and the key names of one record. Tokens are random and carry no personal data.
+        Returns the token and the key names of one record, with the same rules as the list: a finished file is a key of type `file`. Tokens are random and carry no personal data.
       parameters:
         - name: token
           in: path
@@ -552,6 +557,78 @@ paths:
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
 
+  /disclosures/{id}/files/{key}:
+    get:
+      tags: [Disclosures]
+      operationId: downloadDisclosedFile
+      summary: Download an approved file, still encrypted
+      description: |
+        Returns the encrypted file for a file key the customer approved. The file key is in the envelope, so fetch and open the envelope first
+        (`GET /disclosures/{id}/envelope`). The SDK decrypts the download with that key. Use the file, then discard the key: the key opens this
+        one file only and the customer cannot take it back.
+
+        The download works only while the envelope exists: until you acknowledge it, or for 15 minutes after the customer approves. After that,
+        and for a request that is not approved, a key that was not approved, or a request that is not yours, the answer is the same `404`.
+        If the customer replaced or removed the file after approving, the answer is `410 file_replaced`: ask the customer again.
+
+        One `Range` header with one byte range is allowed (`206`). The answer must not be stored by a cache or a proxy. Each download is written
+        to your audit log with the request id and the key name. At most 16 file transfers run at once across the vault; a busy vault answers
+        `429 busy`: try again in a moment.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The disclosure request id, such as `dsc_...`.
+          schema: { type: string }
+        - name: key
+          in: path
+          required: true
+          description: The name of the file key, as in the request.
+          schema: { type: string }
+        - name: Range
+          in: header
+          required: false
+          description: One byte range, such as `bytes=0-1048575`. Offsets count bytes of the encrypted file.
+          schema: { type: string }
+      responses:
+        '200':
+          description: The whole encrypted file.
+          headers:
+            Content-Length: { schema: { type: integer, format: int64 } }
+            Accept-Ranges: { schema: { type: string } }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '206':
+          description: The byte range you asked for.
+          headers:
+            Content-Range: { schema: { type: string } }
+            Content-Length: { schema: { type: integer, format: int64 } }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/PaymentRequired' }
+        '404':
+          description: |
+            No file to serve (`file_not_found`): the envelope was acknowledged or has expired, the key was not approved, or the request is
+            not yours. Every refusal gives this same answer.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: The customer replaced or removed the file after approving it (`file_replaced`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '416':
+          description: The byte range cannot be served (`invalid_range`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /disclosures/{id}/ack:
     post:
       tags: [Disclosures]
@@ -590,11 +667,13 @@ paths:
       description: |
         Starts one visit of a customer to the vault. Send the customer to the `url` in the answer. The link is shown **once** and works for 15 minutes, once.
         
-        **Purposes.** `enrol` (the customer is not enrolled yet), and for an enrolled customer: `entry` and `view` (give either a `template` or a list of `keys`), `approve` (give a `disclosure`), `recover`, `recovery_settings`, `reset` and `delete`.
+        **Purposes.** `enrol` (the customer is not enrolled yet), and for an enrolled customer: `entry` and `view` (give either a `template` or a list of `keys`), `approve` (give a `disclosure`), `recover`, `recovery_settings`, `reset`, `delete` and `holder` (the customer's second device acts as a recovery holder).
+        
+        **How a visit ends.** `enrol`, `entry` and `approve` end as `completed` when their work is saved or decided. `view` and `recovery_settings` have nothing to save, so they end as `completed` when the customer presses Done. A visit ends as `cancelled` when the customer cancels, or after too many wrong secrets.
         
         **Return.** `return_url` must be exactly one of the addresses you registered in the console for this key's mode (test or live). When the visit ends the vault sends the customer back to it, adding `?session=<id>&state=<your state>`. `state` is required: give a value you can tie to your signed-in user. When the customer returns, **do not trust the address**: fetch the session (`GET /sessions/{id}`) or use a webhook to learn what happened.
         
-        Key names are stored without encryption. A name that points at something sensitive is kept but listed in `warnings`.
+        Key names are stored without encryption. A name that points at something sensitive is kept but listed in `warnings`. A short word such as `pin` counts only as a whole part of the name (`pin_code`, not `shipping_address`).
       requestBody:
         required: true
         content:
@@ -972,7 +1051,7 @@ components:
       properties:
         customer: { type: string, example: cus_0f8a1c2d3e4f5a6b7c8d9e0f1a2b3c4d }
         record: { type: string, example: rec_0f8a1c2d3e4f5a6b7c8d9e0f1a2b3c4d }
-        keys: { type: array, minItems: 1, items: { type: string }, description: The names of the keys you ask for. The record must have each one. }
+        keys: { type: array, minItems: 1, items: { type: string }, description: The names of the keys you ask for. The record must have each one, as a value or as a finished file. A request can mix both. }
         reason: { type: string, maxLength: 280, description: Shown to the customer. }
         expires_in: { type: integer, minimum: 60, maximum: 259200, default: 900, description: Seconds the request waits for the customer. }
         disclosure_key_fingerprint: { type: string }
@@ -991,6 +1070,7 @@ components:
         decided_at: { type: [string, 'null'], format: date-time }
         acked_at: { type: [string, 'null'], format: date-time, description: When you acknowledged the envelope. The vault deleted it then. }
         envelope_ready: { type: boolean, description: True while you can still fetch the envelope. }
+        files: { type: array, items: { type: object, properties: { key: { type: string }, size_bytes: { type: integer, format: int64 } } }, description: The file keys the customer approved, with the size of each stored file. Empty unless the request is approved and `envelope_ready` is true. }
         created_at: { type: string, format: date-time }
     Envelope:
       type: object
@@ -1069,6 +1149,7 @@ components:
         cancelled_at: { type: string, format: date-time }
         record: { type: string, description: The record this visit added to or shows. For an entry that makes a new record, it is set when the customer saved. }
         url: { type: string, description: The link to send the customer to. Only in the answer that creates the session. }
+        secret_not_replayable: { type: boolean, description: 'Set to true on a repeat (same `Idempotency-Key`) of the call that made the session or the reset. The one-time `url` is not in a repeat: make a new one with a new key.' }
         warnings: { type: array, items: { type: string } }
     Key:
       type: object

@@ -1,6 +1,7 @@
 package disclosure
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/hex"
 	"encoding/json"
@@ -22,10 +23,15 @@ type fixtureCase struct {
 	ApprovedAt int64             `json:"approved_at"`
 	SignKey    string            `json:"vault_sign_public_key_hex"`
 	Keys       []string          `json:"keys"`
+	Files      []string          `json:"files"`
 	Fields     map[string]string `json:"fields"`
-	Statement  string            `json:"statement_cbor_hex"`
-	Envelope   json.RawMessage   `json:"envelope"`
-	Refuse     []struct {
+	FileGrants map[string]struct {
+		FileID string `json:"file_id"`
+		Key    string `json:"key_hex"`
+	} `json:"file_grants"`
+	Statement string          `json:"statement_cbor_hex"`
+	Envelope  json.RawMessage `json:"envelope"`
+	Refuse    []struct {
 		Name     string          `json:"name"`
 		Envelope json.RawMessage `json:"envelope"`
 		Expected map[string]any  `json:"expected_override"`
@@ -51,22 +57,23 @@ func loadFixture(t *testing.T) []fixtureCase {
 func (c fixtureCase) expected() Expected {
 	private, _ := hex.DecodeString(c.PrivateKey)
 	sign, _ := hex.DecodeString(c.SignKey)
-	return Expected{RequestID: c.RequestID, BusinessID: c.BusinessID, CustomerID: c.CustomerID, KID: c.KID, Keys: c.Keys, SignKey: ed25519.PublicKey(sign), Suite: c.Suite, PrivateKey: private}
+	return Expected{RequestID: c.RequestID, BusinessID: c.BusinessID, CustomerID: c.CustomerID, KID: c.KID, Keys: c.Keys, Files: c.Files, SignKey: ed25519.PublicKey(sign), Suite: c.Suite, PrivateKey: private}
 }
 
 // The fixture comes from custodian-device-crypto, where the browser code made it. This reader was written separately, so a pass here is
 // a second implementation agreeing with the first.
 func TestTheEnvelopeTheBrowserSealedOpensForBothSuites(t *testing.T) {
 	cases := loadFixture(t)
-	if len(cases) != 2 {
-		t.Fatalf("want a case for each suite, got %d", len(cases))
+	if len(cases) != 4 {
+		t.Fatalf("want two cases for each suite, one of them with files, got %d", len(cases))
 	}
+	withFiles := 0
 	for _, c := range cases {
 		got, err := OpenEnvelope(c.Envelope, c.expected())
 		if err != nil {
 			t.Fatalf("%s: %v", c.Name, err)
 		}
-		if got.Record != c.Record || got.ApprovedAt != c.ApprovedAt || len(got.Fields) != len(c.Fields) {
+		if got.Record != c.Record || got.ApprovedAt != c.ApprovedAt || len(got.Fields) != len(c.Fields) || len(got.Files) != len(c.FileGrants) {
 			t.Errorf("%s: %+v", c.Name, got)
 		}
 		for k, v := range c.Fields {
@@ -74,6 +81,44 @@ func TestTheEnvelopeTheBrowserSealedOpensForBothSuites(t *testing.T) {
 				t.Errorf("%s: %s = %q, want %q", c.Name, k, got.Fields[k], v)
 			}
 		}
+		for name, g := range c.FileGrants {
+			if f := got.Files[name]; f.FileID != g.FileID || hex.EncodeToString(f.Key) != g.Key {
+				t.Errorf("%s: file %s = %+v, want %+v", c.Name, name, f, g)
+			}
+		}
+		if len(c.FileGrants) > 0 {
+			withFiles++
+		}
+	}
+	if withFiles != 2 {
+		t.Errorf("want two cases with files, got %d", withFiles)
+	}
+}
+
+func TestAFileOnlyRequestHasNoValuesAndTheKeysCanBeDiscarded(t *testing.T) {
+	c := loadFixture(t)[3]
+	if len(c.Keys) != 0 || len(c.Files) != 1 {
+		t.Fatalf("%s is not the file-only case", c.Name)
+	}
+	got, err := OpenEnvelope(c.Envelope, c.expected())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Fields) != 0 || len(got.Files["passport"].Key) != 32 {
+		t.Fatalf("%+v", got)
+	}
+	got.Discard()
+	if !bytes.Equal(got.Files["passport"].Key, make([]byte, 32)) {
+		t.Error("Discard left the file key in place")
+	}
+}
+
+func TestANameAskedForTwiceIsRefusedBeforeAnythingIsOpened(t *testing.T) {
+	c := loadFixture(t)[2]
+	want := c.expected()
+	want.Keys = append(want.Keys, want.Files[0])
+	if _, err := OpenEnvelope(c.Envelope, want); !errors.Is(err, ErrPayload) {
+		t.Errorf("a name in both groups: %v", err)
 	}
 }
 
@@ -120,6 +165,12 @@ func TestEveryRefusalInTheFixtureIsRefusedForTheRightReason(t *testing.T) {
 				want.Keys = nil
 				for _, k := range v {
 					want.Keys = append(want.Keys, k.(string))
+				}
+			}
+			if v, ok := r.Expected["files"].([]any); ok {
+				want.Files = nil
+				for _, k := range v {
+					want.Files = append(want.Files, k.(string))
 				}
 			}
 			if _, err := OpenEnvelope(r.Envelope, want); !errors.Is(err, names[r.Error]) {

@@ -3,6 +3,8 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -432,7 +434,15 @@ type Disclosure struct {
 	// AckedAt is when you acknowledged the envelope; the vault deleted it then. EnvelopeReady is true while you can still fetch it.
 	AckedAt       *time.Time `json:"acked_at"`
 	EnvelopeReady bool       `json:"envelope_ready"`
-	CreatedAt     time.Time  `json:"created_at"`
+	// Files are the file keys the customer approved, with the size of each stored file. It is empty unless EnvelopeReady is true.
+	Files     []DisclosedFile `json:"files"`
+	CreatedAt time.Time       `json:"created_at"`
+}
+
+// DisclosedFile is one approved file key. SizeBytes is the size of the stored, encrypted file.
+type DisclosedFile struct {
+	Key       string `json:"key"`
+	SizeBytes int64  `json:"size_bytes"`
 }
 
 type DisclosurePage struct {
@@ -474,13 +484,47 @@ func (c *Client) CancelDisclosure(ctx context.Context, id string) (*Disclosure, 
 }
 
 // GetDisclosureEnvelope fetches the sealed values of an approved request, as the JSON the vault sent. Open it with disclosure.OpenEnvelope,
-// then call AckDisclosure. You have 15 minutes after the customer approves.
+// download any files with DownloadDisclosedFile, then call AckDisclosure. You have 15 minutes after the customer approves.
 func (c *Client) GetDisclosureEnvelope(ctx context.Context, id string) (json.RawMessage, error) {
 	raw, err := call[json.RawMessage](ctx, c, http.MethodGet, "/disclosures/"+url.PathEscape(id)+"/envelope", nil)
 	if err != nil {
 		return nil, err
 	}
 	return *raw, nil
+}
+
+// ByteRange is one byte range of the encrypted file. Start and End count from 0 and End is included; an End below 0 means to the end of
+// the file.
+type ByteRange struct {
+	Start, End int64
+}
+
+// DownloadFileParams changes a file download. With a Range the answer is that part only (206), for example to resume a download you
+// save to disk. A part alone does not decrypt: join the parts, then open the whole file.
+type DownloadFileParams struct {
+	Range *ByteRange
+}
+
+// DownloadDisclosedFile returns the encrypted file that the customer approved under key (the file's key name), as the vault sends it. It
+// does not load the file in memory: read the body, and close it. Decrypt it with Opened.OpenFile from the disclosure package, or save it
+// first. The download works only while the envelope exists, so download before you call AckDisclosure.
+//
+// A file the customer replaced or removed after approving gives an error that matches ErrFileReplaced. A busy vault answers 429 busy: try
+// again in a moment.
+func (c *Client) DownloadDisclosedFile(ctx context.Context, id, key string, p DownloadFileParams) (io.ReadCloser, error) {
+	path := "/disclosures/" + url.PathEscape(id) + "/files/" + url.PathEscape(key)
+	if p.Range == nil {
+		return c.stream(ctx, path, nil, http.StatusOK)
+	}
+	r := p.Range
+	if r.Start < 0 || (r.End >= 0 && r.End < r.Start) {
+		return nil, errors.New("custodian: a byte range must start at 0 or later and not end before it starts")
+	}
+	value := "bytes=" + strconv.FormatInt(r.Start, 10) + "-"
+	if r.End >= 0 {
+		value += strconv.FormatInt(r.End, 10)
+	}
+	return c.stream(ctx, path, http.Header{"Range": {value}}, http.StatusPartialContent)
 }
 
 // AckDisclosure tells the vault that you have the envelope and opened it. The vault deletes it. It is safe to call twice.

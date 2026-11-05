@@ -8,7 +8,7 @@ import (
 )
 
 // A small deterministic CBOR (RFC 8949, section 4.2), only as much as an envelope needs. Writing: a map with text keys whose values are
-// unsigned numbers, text or byte strings. Reading: unsigned numbers, text and maps with text keys. Everything else is refused, and so is any
+// unsigned numbers, text or byte strings. Reading: unsigned numbers, byte strings, text and maps with text keys. Everything else is refused, and so is any
 // form that is not the shortest, so each statement has one encoding.
 
 var errCBOR = errors.New("disclosure: not deterministic CBOR")
@@ -52,11 +52,12 @@ func encodeTextArray(items []string) []byte {
 	return out
 }
 
-// value is what the reader returns: a number, text or a map.
+// value is what the reader returns: a number, bytes, text or a map.
 type value struct {
 	num  uint64
 	str  string
-	kind byte // 'n', 's', 'm'
+	raw  []byte
+	kind byte // 'n', 'b', 's', 'm'
 	m    []entry
 }
 
@@ -124,6 +125,12 @@ func (r *reader) item(depth int) (value, error) {
 	switch major {
 	case 0:
 		return value{kind: 'n', num: n}, nil
+	case 2:
+		raw, err := r.take(n)
+		if err != nil {
+			return value{}, errCBOR
+		}
+		return value{kind: 'b', raw: raw}, nil
 	case 3:
 		raw, err := r.take(n)
 		if err != nil || !utf8.Valid(raw) {

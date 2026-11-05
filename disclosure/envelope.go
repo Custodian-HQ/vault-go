@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/hpke"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
@@ -36,8 +37,10 @@ type Expected struct {
 	BusinessID string
 	CustomerID string
 	KID        string
-	// Keys are the key names you asked for. The envelope must hold exactly these.
-	Keys []string
+	// Keys are the value names you asked for and Files the file names. The envelope must hold exactly these, each in its own group.
+	// A request may ask for values only, files only, or both.
+	Keys  []string
+	Files []string
 	// SignKey is the customer's public vault-sign key. Use the one you kept from the customer.enrolled webhook.
 	SignKey ed25519.PublicKey
 	// Suite and PrivateKey are your disclosure key.
@@ -51,7 +54,23 @@ type Opened struct {
 	Record     string
 	ApprovedAt int64
 	Fields     map[string]string
+	// Files holds a grant for each file you asked for. Download the file with client.DownloadDisclosedFile and decrypt it with
+	// Opened.OpenFile. A key opens that one file only and the customer cannot take it back: use the file, then discard the key.
+	Files map[string]File
+
+	businessID, customerID string
 }
+
+// File is the grant for one disclosed file: the file id and its 32-byte file key.
+type File struct {
+	FileID string
+	Key    []byte
+}
+
+const fileKeySize = 32
+
+// fileKeyID is the first 8 bytes of SHA-256("cdv/v1/file-key"): it says which key derivation made the file key.
+var fileKeyID = func() []byte { sum := sha256.Sum256([]byte("cdv/v1/file-key")); return sum[:8] }()
 
 type wire struct {
 	V          int    `json:"v"`
@@ -70,7 +89,8 @@ var strict = base64.RawURLEncoding.Strict()
 
 // OpenEnvelope checks and opens an envelope from GET /disclosures/{id}/envelope. It checks, in order: the shape; the request, the business,
 // the customer, the key and the suite; the customer's signature over everything; the key commitment; and that the sealed content names
-// the same request and holds exactly the keys you asked for. Nothing is opened unless the signature is good. Call AckDisclosure afterwards.
+// the same request and holds exactly the values and files you asked for. Nothing is opened unless the signature is good. Download the
+// files you need before you call AckDisclosure: the vault serves them only while the envelope exists.
 func OpenEnvelope(raw []byte, want Expected) (*Opened, error) {
 	var w wire
 	dec := json.NewDecoder(bytes.NewReader(raw))
@@ -109,9 +129,14 @@ func OpenEnvelope(raw []byte, want Expected) (*Opened, error) {
 		return nil, ErrSignature
 	}
 
-	names := append([]string{}, want.Keys...)
+	names := append(append([]string{}, want.Keys...), want.Files...)
 	// Key names are ASCII, so sorting the strings sorts their bytes.
 	sort.Strings(names)
+	for i := 1; i < len(names); i++ {
+		if names[i] == names[i-1] {
+			return nil, ErrPayload
+		}
+	}
 	aad := encodeTextArray(names)
 	info := append(append(append([]byte(infoLabel), 0), w.BusinessID...), append([]byte{0}, w.RequestID...)...)
 
@@ -135,15 +160,21 @@ func OpenEnvelope(raw []byte, want Expected) (*Opened, error) {
 	if err != nil {
 		return nil, ErrPayload
 	}
+	defer clear(plain)
 	return readPayload(plain, want)
 }
 
-func readPayload(plain []byte, want Expected) (*Opened, error) {
+func readPayload(plain []byte, want Expected) (_ *Opened, err error) {
 	v, err := decode(plain)
 	if err != nil || v.kind != 'm' {
 		return nil, ErrPayload
 	}
-	out := &Opened{Fields: map[string]string{}}
+	out := &Opened{Fields: map[string]string{}, Files: map[string]File{}, businessID: want.BusinessID, customerID: want.CustomerID}
+	defer func() {
+		if err != nil {
+			out.Discard()
+		}
+	}()
 	var seenRequest, seenRecord, seenAt, seenFields bool
 	for _, e := range v.m {
 		switch e.key {
@@ -173,17 +204,69 @@ func readPayload(plain []byte, want Expected) (*Opened, error) {
 				out.Fields[f.key] = f.val.str
 			}
 			seenFields = true
+		case "files":
+			// A writer leaves "files" out when no file is disclosed, so an empty map is refused.
+			if e.val.kind != 'm' || len(e.val.m) == 0 {
+				return nil, ErrPayload
+			}
+			for _, f := range e.val.m {
+				grant, ok := readGrant(f.val)
+				if !ok {
+					return nil, ErrPayload
+				}
+				out.Files[f.key] = grant
+			}
 		default:
 			return nil, ErrPayload
 		}
 	}
-	if !seenRequest || !seenRecord || !seenAt || !seenFields || len(out.Fields) != len(want.Keys) {
+	if !seenRequest || !seenRecord || !seenAt || !seenFields || !holdsExactly(out.Fields, want.Keys) || !holdsExactly(out.Files, want.Files) {
 		return nil, ErrPayload
 	}
-	for _, k := range want.Keys {
-		if _, ok := out.Fields[k]; !ok {
-			return nil, ErrPayload
+	return out, nil
+}
+
+func readGrant(v value) (File, bool) {
+	if v.kind != 'm' || len(v.m) != 3 {
+		return File{}, false
+	}
+	var g File
+	var keyID []byte
+	for _, e := range v.m {
+		switch {
+		case e.key == "file_id" && e.val.kind == 's':
+			g.FileID = e.val.str
+		case e.key == "key" && e.val.kind == 'b':
+			g.Key = e.val.raw
+		case e.key == "key_id" && e.val.kind == 'b':
+			keyID = e.val.raw
+		default:
+			return File{}, false
 		}
 	}
-	return out, nil
+	if g.FileID == "" || len(g.Key) != fileKeySize || !bytes.Equal(keyID, fileKeyID) {
+		return File{}, false
+	}
+	g.Key = bytes.Clone(g.Key)
+	return g, true
+}
+
+func holdsExactly[V any](got map[string]V, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for _, k := range want {
+		if _, ok := got[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// Discard clears the file keys of every grant. Call it once you have the files you need. A key cannot be taken back, so a key you do not
+// keep is a key that cannot leak. Values in Fields are Go strings and cannot be cleared.
+func (o *Opened) Discard() {
+	for _, f := range o.Files {
+		clear(f.Key)
+	}
 }

@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -97,6 +99,9 @@ func TestEverySDKMethodMatchesTheSpecAndTheSpecIsFullyCovered(t *testing.T) {
 	_, _ = c.ListDisclosures(ctx, ListDisclosuresParams{Status: "pending", Limit: 5, StartingAfter: "dsc_1"})
 	_, _ = c.CancelDisclosure(ctx, "dsc_1")
 	_, _ = c.GetDisclosureEnvelope(ctx, "dsc_1")
+	if body, err := c.DownloadDisclosedFile(ctx, "dsc_1", "passport", DownloadFileParams{}); err == nil {
+		body.Close()
+	}
 	_, _ = c.AckDisclosure(ctx, "dsc_1")
 	_, _ = c.GetUsage(ctx, time.Time{}, time.Time{})
 	_, _ = c.ListAuditEvents(ctx, 5, 9)
@@ -316,5 +321,78 @@ func TestAuditEventReadsEveryFieldOfTheSpec(t *testing.T) {
 	e := events[1]
 	if e.Staff || e.UserEmail != "a@example.com" || e.APIKeyLabel != "cdv_test_Qa7x…m2Lp" || e.Livemode == nil || *e.Livemode || e.APIKey != "key_1" {
 		t.Fatalf("api event read wrong: %+v", e)
+	}
+}
+
+func TestDownloadDisclosedFileStreamsTheBodyAndSendsTheRange(t *testing.T) {
+	var gotPath, gotRange, gotAuth, gotIdem string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath, gotRange, gotAuth, gotIdem = r.URL.EscapedPath(), r.Header.Get("Range"), r.Header.Get("Authorization"), r.Header.Get("Idempotency-Key")
+		if gotRange != "" {
+			w.WriteHeader(http.StatusPartialContent)
+		}
+		// A slow body: the client's own timeout limits the wait for the answer, not the read.
+		w.Write([]byte("abc"))
+		w.(http.Flusher).Flush()
+		time.Sleep(300 * time.Millisecond)
+		w.Write([]byte("def"))
+	}))
+	defer server.Close()
+	c, _ := New("k", WithBaseURL(server.URL), WithHTTPClient(&http.Client{Timeout: 100 * time.Millisecond}))
+	ctx := context.Background()
+
+	body, err := c.DownloadDisclosedFile(ctx, "dsc_1", "id/doc", DownloadFileParams{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := io.ReadAll(body)
+	body.Close()
+	if err != nil || string(got) != "abcdef" {
+		t.Fatalf("%q, %v", got, err)
+	}
+	if gotPath != "/disclosures/dsc_1/files/id%2Fdoc" || gotRange != "" || gotAuth != "Bearer k" || gotIdem != "" {
+		t.Errorf("path %s, range %q, auth %q, idempotency %q", gotPath, gotRange, gotAuth, gotIdem)
+	}
+
+	for want, r := range map[string]ByteRange{"bytes=10-": {Start: 10, End: -1}, "bytes=0-1048575": {Start: 0, End: 1048575}} {
+		body, err := c.DownloadDisclosedFile(ctx, "dsc_1", "passport", DownloadFileParams{Range: &r})
+		if err != nil {
+			t.Fatal(err)
+		}
+		io.Copy(io.Discard, body)
+		body.Close()
+		if gotRange != want {
+			t.Errorf("range %q, want %q", gotRange, want)
+		}
+	}
+	if _, err := c.DownloadDisclosedFile(ctx, "dsc_1", "passport", DownloadFileParams{Range: &ByteRange{Start: 5, End: 2}}); err == nil {
+		t.Error("a range that ends before it starts was sent")
+	}
+}
+
+func TestDownloadDisclosedFileErrors(t *testing.T) {
+	status, body := 0, ""
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(status)
+		w.Write([]byte(body))
+	}))
+	defer server.Close()
+	c, _ := New("k", WithBaseURL(server.URL))
+	ctx := context.Background()
+
+	status, body = http.StatusGone, `{"error":{"type":"invalid_request_error","code":"file_replaced","message":"replaced"}}`
+	_, err := c.DownloadDisclosedFile(ctx, "dsc_1", "passport", DownloadFileParams{})
+	var apiErr *APIError
+	if !errors.Is(err, ErrFileReplaced) || !errors.As(err, &apiErr) || apiErr.Status != http.StatusGone {
+		t.Errorf("410 file_replaced: %v", err)
+	}
+	status, body = http.StatusNotFound, `{"error":{"type":"invalid_request_error","code":"file_not_found","message":"no"}}`
+	if _, err := c.DownloadDisclosedFile(ctx, "dsc_1", "passport", DownloadFileParams{}); errors.Is(err, ErrFileReplaced) || !errors.As(err, &apiErr) || apiErr.Code != "file_not_found" {
+		t.Errorf("404: %v", err)
+	}
+	// A server that ignores the range would hand back the whole file where a part was expected.
+	status, body = http.StatusOK, "whole file"
+	if _, err := c.DownloadDisclosedFile(ctx, "dsc_1", "passport", DownloadFileParams{Range: &ByteRange{Start: 10, End: -1}}); err == nil {
+		t.Error("a 200 answer to a range request was accepted")
 	}
 }
