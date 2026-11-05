@@ -5,6 +5,7 @@ import (
 	"crypto/hpke"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
 	"testing"
 )
@@ -109,6 +110,39 @@ func TestFingerprint_MatchesTheSharedFixture(t *testing.T) {
 	for _, c := range fixture.Cases {
 		if got := Fingerprint(c.Suite, mustHex(t, c.PublicKey)); got != c.Fingerprint {
 			t.Errorf("%s: got %s, want %s. Every implementation must give the same answer", c.Name, got, c.Fingerprint)
+		}
+	}
+}
+
+func TestOpenRefusesAMessageThatWasChangedOrIsForAnotherKey(t *testing.T) {
+	var s struct{ Suite, SkR, Info, Aad, Enc, Ct, Commit, Pt string }
+	readJSON(t, "hpke-xwing-aes256gcm-sample.json", &s)
+	sk, enc, info, aad, ct, commit := mustHex(t, s.SkR), mustHex(t, s.Enc), mustHex(t, s.Info), mustHex(t, s.Aad), mustHex(t, s.Ct), mustHex(t, s.Commit)
+
+	flip := func(b []byte, i int) []byte { c := bytes.Clone(b); c[i] ^= 1; return c }
+	other, _, err := GenerateKey(s.Suite)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, c := range map[string]struct {
+		sk, enc, aad, ct []byte
+		wantCommitment   bool
+	}{
+		"a changed ciphertext":    {sk, enc, aad, flip(ct, 0), false},
+		"a changed last byte":     {sk, enc, aad, flip(ct, len(ct)-1), false},
+		"a truncated ciphertext":  {sk, enc, aad, ct[:len(ct)-1], false},
+		"an empty ciphertext":     {sk, enc, aad, nil, false},
+		"a changed enc":           {sk, flip(enc, 0), aad, ct, true},
+		"another private key":     {other, enc, aad, ct, true},
+		"another associated data": {sk, enc, append(bytes.Clone(aad), 0), ct, false},
+	} {
+		got, err := Open(s.Suite, c.sk, c.enc, info, c.aad, c.ct, commit)
+		if err == nil || got != nil {
+			t.Errorf("%s: opened (%d bytes, %v)", name, len(got), err)
+			continue
+		}
+		if errors.Is(err, ErrCommitment) != c.wantCommitment {
+			t.Errorf("%s: got %v", name, err)
 		}
 	}
 }

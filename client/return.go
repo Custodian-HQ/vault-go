@@ -50,7 +50,7 @@ func ApproveURL(sessionURL, fingerprint string) (string, error) {
 		}
 	}
 	u, err := url.Parse(sessionURL)
-	if err != nil || u.Fragment == "" || u.Scheme != "https" && u.Hostname() != "localhost" {
+	if err != nil || u.Fragment == "" || !(u.Scheme == "https" || u.Scheme == "http" && u.Hostname() == "localhost") {
 		return "", ErrBadReturn
 	}
 	return sessionURL + "&fp=" + strings.ToLower(fingerprint), nil

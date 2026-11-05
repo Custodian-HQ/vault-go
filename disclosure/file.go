@@ -39,7 +39,8 @@ const (
 	fileNonceSize       = filePrefixSize + 4 + 1
 	fileMinChunk        = 1 << 10
 	fileMaxChunk        = 1 << 20
-	fileMaxChunks       = 1<<32 - 1
+	// fileMaxChunks is the most chunks a stream has (counters 0 to 2^32-2), as the wire format says.
+	fileMaxChunks = 1<<32 - 1
 )
 
 // FileContext names where a file belongs. It is checked when the file is opened, so the vault cannot show one customer's file, or a file
@@ -88,9 +89,13 @@ func OpenFile(f File, ciphertext io.Reader, c FileContext) (io.ReadCloser, error
 	if subtle.ConstantTimeCompare(f.Key, make([]byte, fileKeySize)) == 1 {
 		return nil, ErrFileKeyCleared
 	}
-	in := bufio.NewReaderSize(ciphertext, 64<<10)
+	src := &source{r: ciphertext}
+	in := bufio.NewReaderSize(src, 64<<10)
 	header := make([]byte, fileHeaderSize)
 	if _, err := io.ReadFull(in, header); err != nil {
+		if src.err != nil {
+			return nil, &readError{src.err}
+		}
 		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 			return nil, ErrFileFormat
 		}
@@ -109,7 +114,7 @@ func OpenFile(f File, ciphertext io.Reader, c FileContext) (io.ReadCloser, error
 		return nil, ErrFileCommitment
 	}
 	s := &chunkReader{
-		in: in, aead: aead, header: header, prefix: header[15+fileSaltSize : 15+fileSaltSize+filePrefixSize], aad: c.aad(f.FileID),
+		in: in, src: src, aead: aead, header: header, prefix: header[15+fileSaltSize : 15+fileSaltSize+filePrefixSize], aad: c.aad(f.FileID),
 		sealed: make([]byte, size+fileTagSize), plain: make([]byte, 0, size),
 	}
 	if err := s.next(); err != nil {
@@ -141,6 +146,27 @@ func fileKeys(fileKey, salt []byte) (cipher.AEAD, []byte, error) {
 	aead, err := cipher.NewGCM(block)
 	return aead, commit, err
 }
+
+// source remembers the first error of the reader below the file that is not the clean end. io.ReadFull gives io.ErrUnexpectedEOF both for a
+// clean end inside a chunk and for a connection that net/http cut short, and only the first is the end of the file.
+type source struct {
+	r   io.Reader
+	err error
+}
+
+func (s *source) Read(p []byte) (int, error) {
+	n, err := s.r.Read(p)
+	if err != nil && err != io.EOF && s.err == nil {
+		s.err = err
+	}
+	return n, err
+}
+
+// readError is an error of the reader below the file, such as a cut connection. It is not the end of the file and not a changed file.
+type readError struct{ err error }
+
+func (e *readError) Error() string { return e.err.Error() }
+func (e *readError) Unwrap() error { return e.err }
 
 type fileReader struct {
 	key     []byte
@@ -181,6 +207,7 @@ func (r *fileReader) Close() error {
 // chunkReader opens the chunks of the stream, in order.
 type chunkReader struct {
 	in      *bufio.Reader
+	src     *source
 	aead    cipher.AEAD
 	header  []byte
 	prefix  []byte
@@ -209,13 +236,16 @@ func (s *chunkReader) next() error {
 	}
 	n, err := io.ReadFull(s.in, s.sealed)
 	last := false
+	if err != nil && s.src.err != nil {
+		return &readError{s.src.err}
+	}
 	switch {
 	case err == nil:
 		// A full chunk is the last one only if nothing follows it.
 		if _, peek := s.in.Peek(1); errors.Is(peek, io.EOF) {
 			last = true
 		} else if peek != nil {
-			return peek
+			return &readError{peek}
 		}
 	case errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF):
 		if n < fileTagSize {

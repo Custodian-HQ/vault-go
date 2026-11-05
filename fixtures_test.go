@@ -12,7 +12,7 @@ import (
 
 // The fixtures are vendored from custodian-device-crypto. Two checks keep them honest: every file must match the
 // manifest, and the manifest must match the hash pinned in testdata/fixtures.lock. To take new fixtures, run
-// scripts/vendor-fixtures.sh and review the diff.
+// scripts/vendor-fixtures.sh and review the diff. PROVENANCE.md is this repository's own text, so only its name is checked.
 const dir = "testdata/fixtures/v1"
 
 func sha(t *testing.T, path string) string {
@@ -52,6 +52,8 @@ func TestEveryFixtureMatchesTheManifest(t *testing.T) {
 		want, listed := manifest.Files[e.Name()]
 		if !listed {
 			t.Errorf("%s is not in the manifest", e.Name())
+		} else if e.Name() == "PROVENANCE.md" {
+			continue
 		} else if got := sha(t, filepath.Join(dir, e.Name())); got != want {
 			t.Errorf("%s changed: %s, manifest says %s", e.Name(), got, want)
 		}

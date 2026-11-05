@@ -1,5 +1,5 @@
 // Package client is the HTTP client for the Custodian Data Vault API. It handles the API key, idempotency keys and
-// error bodies. The endpoint methods (customers, sessions, records, ...) are added with the API in Phase 1.
+// error bodies, and has a method for each endpoint (customers, sessions, records, disclosures, ...).
 package client
 
 import (
@@ -16,21 +16,30 @@ import (
 	"time"
 )
 
+// maxResponse is the largest answer Do reads. It is a variable so a test can lower it.
+var maxResponse int64 = 32 << 20
+
+// maxErrorBody is the most of an error answer that is read.
+const maxErrorBody = 64 << 10
+
 // DefaultBaseURL is the vault API, with its version.
 const DefaultBaseURL = "https://api.thecustodian.io/vault/v1"
 
+// Client sends requests to the API for one API key. It does not change after New, so one client can serve many goroutines.
 type Client struct {
 	baseURL string
 	apiKey  string
 	http    *http.Client
 }
 
+// Option changes how New makes a client.
 type Option func(*Client)
 
 // WithBaseURL points the client at another server, such as a test server.
 func WithBaseURL(u string) Option { return func(c *Client) { c.baseURL = strings.TrimRight(u, "/") } }
 
-// WithHTTPClient replaces the HTTP client.
+// WithHTTPClient replaces the HTTP client. New copies it, so later changes to h are not seen. If h has its own CheckRedirect,
+// the library does not guard redirects: that function must keep the API key from other servers.
 func WithHTTPClient(h *http.Client) Option { return func(c *Client) { c.http = h } }
 
 // New makes a client for an API key. The key must not be empty.
@@ -42,7 +51,28 @@ func New(apiKey string, opts ...Option) (*Client, error) {
 	for _, opt := range opts {
 		opt(c)
 	}
+	if c.http == nil {
+		return nil, errors.New("custodian: the HTTP client must not be nil")
+	}
+	if c.http.CheckRedirect == nil {
+		h := *c.http
+		h.CheckRedirect = dropKeyOnOtherOrigin
+		c.http = &h
+	}
 	return c, nil
+}
+
+// dropKeyOnOtherOrigin keeps the API key from going to a server other than the one first asked. Go compares host names only, so
+// without this a redirect to another port would carry the key.
+func dropKeyOnOtherOrigin(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return errors.New("custodian: stopped after 10 redirects")
+	}
+	first := via[0].URL
+	if req.URL.Scheme != first.Scheme || req.URL.Host != first.Host {
+		req.Header.Del("Authorization")
+	}
+	return nil
 }
 
 // APIError is the error body of the API: {"error": {...}}.
@@ -55,6 +85,7 @@ type APIError struct {
 	RequestID string `json:"request_id,omitempty"`
 }
 
+// Error gives the status, the code, the message and the request id, which Custodian support asks for.
 func (e *APIError) Error() string {
 	return fmt.Sprintf("custodian: %d %s: %s (request %s)", e.Status, e.Code, e.Message, e.RequestID)
 }
@@ -80,15 +111,25 @@ func (c *Client) Do(ctx context.Context, method, path string, body, out any, opt
 		return err
 	}
 	defer resp.Body.Close()
-	payload, err := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 300 {
+		payload, err := io.ReadAll(io.LimitReader(resp.Body, maxErrorBody))
+		if err != nil {
+			return err
+		}
+		return parseError(resp.StatusCode, payload)
+	}
+	payload, err := io.ReadAll(io.LimitReader(resp.Body, maxResponse+1))
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode >= 300 {
-		return parseError(resp.StatusCode, payload)
+	if int64(len(payload)) > maxResponse {
+		return &APIError{Status: resp.StatusCode, Type: "api_error", Code: "response_too_large", Message: "the answer is larger than the library reads"}
 	}
 	if out == nil || len(payload) == 0 {
 		return nil
+	}
+	if !json.Valid(payload) {
+		return &APIError{Status: resp.StatusCode, Type: "api_error", Code: "unparsed_response", Message: "the answer is not JSON"}
 	}
 	return json.Unmarshal(payload, out)
 }
@@ -143,23 +184,35 @@ func (c *Client) stream(ctx context.Context, path string, header http.Header, ok
 	if c.http.Timeout > 0 {
 		timer = time.AfterFunc(c.http.Timeout, cancel)
 	}
+	// Stop is false when the timer already ran, even if Do came back with an answer just before.
+	fired := func() bool { return timer != nil && !timer.Stop() }
 	resp, err := h.Do(req)
-	if timer != nil {
-		timer.Stop()
-	}
 	if err != nil {
+		timedOut := fired()
 		cancel()
+		if timedOut {
+			return nil, &timeoutError{c.http.Timeout}
+		}
 		return nil, err
 	}
 	for _, status := range ok {
 		if resp.StatusCode == status {
+			if fired() {
+				resp.Body.Close()
+				cancel()
+				return nil, &timeoutError{c.http.Timeout}
+			}
 			return &cancelOnClose{ReadCloser: resp.Body, cancel: cancel}, nil
 		}
 	}
 	defer cancel()
 	defer resp.Body.Close()
-	payload, err := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
-	if err != nil {
+	// The timer keeps running while the error body is read, so a stalled error answer times out too.
+	payload, err := io.ReadAll(io.LimitReader(resp.Body, maxErrorBody))
+	if timedOut := fired(); err != nil {
+		if timedOut {
+			return nil, &timeoutError{c.http.Timeout}
+		}
 		return nil, err
 	}
 	if resp.StatusCode < 300 {
@@ -167,6 +220,15 @@ func (c *Client) stream(ctx context.Context, path string, header http.Header, ok
 	}
 	return nil, parseError(resp.StatusCode, payload)
 }
+
+// timeoutError is what stream returns when the answer does not come in time. It matches errors.Is(err, context.DeadlineExceeded) and
+// has Timeout() true, as the error of Do does.
+type timeoutError struct{ wait time.Duration }
+
+func (e *timeoutError) Error() string   { return "custodian: no answer within " + e.wait.String() }
+func (e *timeoutError) Timeout() bool   { return true }
+func (e *timeoutError) Temporary() bool { return true }
+func (e *timeoutError) Unwrap() error   { return context.DeadlineExceeded }
 
 type cancelOnClose struct {
 	io.ReadCloser

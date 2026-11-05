@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -89,6 +90,7 @@ type CustomerResetEvent struct {
 	InitiatedBy string    `json:"initiated_by"`
 }
 
+// CustomerPage is one page of customers. HasMore is true when another page follows: ask again with StartingAfter set to the id of the last customer.
 type CustomerPage struct {
 	Data    []Customer `json:"data"`
 	HasMore bool       `json:"has_more"`
@@ -184,9 +186,12 @@ type Session struct {
 	CompletedAt *time.Time    `json:"completed_at,omitempty"`
 	CancelledAt *time.Time    `json:"cancelled_at,omitempty"`
 	// Record is the record this visit added to or shows. For an entry that makes a new record, it is set once the customer saved.
-	Record   string   `json:"record,omitempty"`
-	URL      string   `json:"url,omitempty"`
-	Warnings []string `json:"warnings,omitempty"`
+	Record string `json:"record,omitempty"`
+	URL    string `json:"url,omitempty"`
+	// SecretNotReplayable is true on a repeat of a call that made a session or a reset with the same idempotency key. The one-time URL is not in a
+	// repeat: make a new session or reset with a new key.
+	SecretNotReplayable bool     `json:"secret_not_replayable,omitempty"`
+	Warnings            []string `json:"warnings,omitempty"`
 }
 
 // CreateSession starts a session. Send the customer to the URL in the answer: it is shown once. Pass WithIdempotencyKey to make a retry safe.
@@ -225,6 +230,7 @@ func (c *Client) GetTemplate(ctx context.Context, name string) (*Template, error
 	return call[Template](ctx, c, http.MethodGet, "/templates/"+url.PathEscape(name), nil)
 }
 
+// ReplaceTemplate replaces all keys of an existing template. Sessions already made keep the keys they were made with.
 func (c *Client) ReplaceTemplate(ctx context.Context, name string, keys []Key) (*Template, error) {
 	return call[Template](ctx, c, http.MethodPut, "/templates/"+url.PathEscape(name), map[string]any{"keys": keys})
 }
@@ -242,6 +248,7 @@ func (c *Client) GetRecoveryPolicy(ctx context.Context) (*RecoveryPolicy, error)
 	return call[RecoveryPolicy](ctx, c, http.MethodGet, "/recovery-policy", nil)
 }
 
+// SetRecoveryPolicy sets how many holders are needed to recover a customer's vault. The threshold must be between 2 and 10.
 func (c *Client) SetRecoveryPolicy(ctx context.Context, threshold int) (*RecoveryPolicy, error) {
 	return call[RecoveryPolicy](ctx, c, http.MethodPut, "/recovery-policy", RecoveryPolicy{RecoveryThreshold: threshold})
 }
@@ -269,6 +276,12 @@ type WebhookEndpoint struct {
 	Livemode  bool                  `json:"livemode"`
 	Status    WebhookEndpointStatus `json:"status"`
 	CreatedAt time.Time             `json:"created_at"`
+	// SecretLast4 is the last 4 characters of the signing secret, to tell secrets apart.
+	SecretLast4 string `json:"secret_last4,omitempty"`
+	// FailingDeliveries counts events still retrying, plus events that gave up in the last 24 hours. LastDeliveryAt is when the newest event was
+	// delivered, gave up, or was queued. Both are filled in lists only.
+	FailingDeliveries int        `json:"failing_deliveries"`
+	LastDeliveryAt    *time.Time `json:"last_delivery_at,omitempty"`
 }
 
 func (c *Client) ListWebhookEndpoints(ctx context.Context) ([]WebhookEndpoint, error) {
@@ -289,10 +302,13 @@ type WebhookDelivery struct {
 	Type        string                `json:"type"`
 	Status      WebhookDeliveryStatus `json:"status"`
 	Attempts    int                   `json:"attempts"`
-	LastStatus  *int                  `json:"last_status,omitempty"`
-	LastError   *string               `json:"last_error,omitempty"`
-	CreatedAt   time.Time             `json:"created_at"`
-	CompletedAt *time.Time            `json:"completed_at,omitempty"`
+	MaxAttempts int                   `json:"max_attempts"`
+	// NextRetryAt is when the next try is due. It is set only while the delivery is pending or retrying.
+	NextRetryAt *time.Time `json:"next_retry_at,omitempty"`
+	LastStatus  *int       `json:"last_status,omitempty"`
+	LastError   *string    `json:"last_error,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
 }
 
 type ListDeliveriesParams struct {
@@ -319,6 +335,7 @@ func (c *Client) ListWebhookDeliveries(ctx context.Context, p ListDeliveriesPara
 	return page.Data, nil
 }
 
+// RetryWebhookDelivery makes a waiting or failed delivery ready at once. A delivery that used all its tries gets one more.
 func (c *Client) RetryWebhookDelivery(ctx context.Context, id int64) error {
 	return c.Do(ctx, http.MethodPost, "/webhook-deliveries/"+strconv.FormatInt(id, 10)+"/retry", nil, nil)
 }
@@ -333,16 +350,20 @@ type Usage struct {
 	Records     int       `json:"records"`
 	Sessions    int       `json:"sessions"`
 	Disclosures int       `json:"disclosures"`
+	// NewCustomers7d counts customers made in the 7 days before the end of the period. PendingDisclosures counts requests that wait for a
+	// customer now.
+	NewCustomers7d     int `json:"new_customers_7d"`
+	PendingDisclosures int `json:"pending_disclosures"`
 }
 
 // GetUsage counts usage. Zero times mean this month so far.
 func (c *Client) GetUsage(ctx context.Context, from, to time.Time) (*Usage, error) {
 	values := url.Values{}
 	if !from.IsZero() {
-		values.Set("from", from.UTC().Format(time.RFC3339))
+		values.Set("from", from.UTC().Format(time.RFC3339Nano))
 	}
 	if !to.IsZero() {
-		values.Set("to", to.UTC().Format(time.RFC3339))
+		values.Set("to", to.UTC().Format(time.RFC3339Nano))
 	}
 	return call[Usage](ctx, c, http.MethodGet, "/usage"+query(values), nil)
 }
@@ -363,11 +384,40 @@ type AuditEvent struct {
 	Payload  map[string]any `json:"payload,omitempty"`
 }
 
-func (c *Client) ListAuditEvents(ctx context.Context, limit int, startingAfter int64) ([]AuditEvent, error) {
+// ListAuditEventsParams narrows and pages the audit log. A zero field is left out.
+type ListAuditEventsParams struct {
+	Limit int
+	// StartingAfter is the id of the last event of the previous page.
+	StartingAfter int64
+	// Type is one event type, such as "api_key.created". Actor is "member" or "api_key".
+	Type  string
+	Actor string
+	// From is included and To is not. Q matches a member's email, a key id, or text in the event (up to 100 characters).
+	From, To time.Time
+	Q        string
+}
+
+// ListAuditEvents lists the audit log, newest first. To read the next page, pass the id of the last event as StartingAfter.
+func (c *Client) ListAuditEvents(ctx context.Context, p ListAuditEventsParams) ([]AuditEvent, error) {
 	values := url.Values{}
-	addInt(values, "limit", limit)
-	if startingAfter > 0 {
-		values.Set("starting_after", strconv.FormatInt(startingAfter, 10))
+	addInt(values, "limit", p.Limit)
+	if p.StartingAfter > 0 {
+		values.Set("starting_after", strconv.FormatInt(p.StartingAfter, 10))
+	}
+	if p.Type != "" {
+		values.Set("type", p.Type)
+	}
+	if p.Actor != "" {
+		values.Set("actor", p.Actor)
+	}
+	if !p.From.IsZero() {
+		values.Set("from", p.From.UTC().Format(time.RFC3339Nano))
+	}
+	if !p.To.IsZero() {
+		values.Set("to", p.To.UTC().Format(time.RFC3339Nano))
+	}
+	if p.Q != "" {
+		values.Set("q", p.Q)
 	}
 	page, err := call[struct {
 		Data []AuditEvent `json:"data"`
@@ -445,6 +495,7 @@ type DisclosedFile struct {
 	SizeBytes int64  `json:"size_bytes"`
 }
 
+// DisclosurePage is one page of disclosure requests. HasMore is true when another page follows: ask again with StartingAfter set to the id of the last one.
 type DisclosurePage struct {
 	Data    []Disclosure `json:"data"`
 	HasMore bool         `json:"has_more"`
@@ -493,10 +544,10 @@ func (c *Client) GetDisclosureEnvelope(ctx context.Context, id string) (json.Raw
 	return *raw, nil
 }
 
-// ByteRange is one byte range of the encrypted file. Start and End count from 0 and End is included; an End below 0 means to the end of
-// the file.
+// ByteRange is one byte range of the encrypted file. Start counts from 0. Length is how many bytes to read; 0 means to the end of the file,
+// so the zero value is the whole file.
 type ByteRange struct {
-	Start, End int64
+	Start, Length int64
 }
 
 // DownloadFileParams changes a file download. With a Range the answer is that part only (206), for example to resume a download you
@@ -517,12 +568,12 @@ func (c *Client) DownloadDisclosedFile(ctx context.Context, id, key string, p Do
 		return c.stream(ctx, path, nil, http.StatusOK)
 	}
 	r := p.Range
-	if r.Start < 0 || (r.End >= 0 && r.End < r.Start) {
-		return nil, errors.New("custodian: a byte range must start at 0 or later and not end before it starts")
+	if r.Start < 0 || r.Length < 0 || r.Length > math.MaxInt64-r.Start {
+		return nil, errors.New("custodian: a byte range must start at 0 or later and must not have a negative length")
 	}
 	value := "bytes=" + strconv.FormatInt(r.Start, 10) + "-"
-	if r.End >= 0 {
-		value += strconv.FormatInt(r.End, 10)
+	if r.Length > 0 {
+		value += strconv.FormatInt(r.Start+r.Length-1, 10)
 	}
 	return c.stream(ctx, path, http.Header{"Range": {value}}, http.StatusPartialContent)
 }

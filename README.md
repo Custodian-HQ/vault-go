@@ -13,7 +13,7 @@ make a customer, send them to the vault, hear what happened, and ask to see a va
 
 - You need a Custodian account and an API key. Start with a **test** key. Test mode never touches real customer data.
 - Use this library **on your server only**. Never put your API key in a client app.
-- You need **Go 1.27**. The library needs no other Go modules.
+- You need **Go 1.27**. The `client` and `webhook` packages need no other Go module. The `disclosure` package needs one: [klauspost/compress](https://github.com/klauspost/compress).
 
 ## The journey
 
@@ -163,6 +163,10 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 Later you use it to prove that data really came from this customer.
 If a later event names a different key, `Observe` returns `disclosure.ErrKeyChanged`. Treat that as an attack.
 
+If you keep the keys in a database, make your store an `disclosure.AtomicKeyStore`: add `PutIfAbsent(customerID, key) (stored bool, err error)`,
+one insert that does nothing when a key is there. Then two events handled at the same time for one customer cannot both keep a key.
+`disclosure.MemoryKeyStore` does this already.
+
 ## 6. Other things a customer can do
 
 You start every visit the same way as in step 3. Only the purpose changes.
@@ -308,10 +312,28 @@ _, err = c.AckDisclosure(ctx, request.ID)
 - A file key opens that one file only. The customer cannot take it back, so use the file, then discard the key. Do not store it.
 - Read the file to the end before you keep it. A file that was cut short or changed fails, sometimes only at the end
   (`disclosure.ErrFileTruncated`, `ErrFileOpen`). A file that was sealed to another key fails at once (`ErrFileCommitment`).
+- The library does not limit how large the file grows when it is decompressed. A small upload can become very large. Bound what you
+  write, and do not use the file if it goes over:
+
+  ```go
+  const maxFile = 20 << 20 // the most you accept, in bytes
+  n, err := io.Copy(out, io.LimitReader(file, maxFile+1))
+  if err != nil {
+  	return err
+  }
+  if n > maxFile {
+  	return errors.New("the file is too large") // do not use the file
+  }
+  ```
+
 - The library does not check the file type. Check it again before you use the file, as for any upload.
 - If the customer replaced or removed the file after approving, the download fails with `client.ErrFileReplaced`. Ask again.
-- A busy vault answers `429 busy`. Try again in a moment. To resume a large download, save it to disk and use
-  `DownloadFileParams{Range: ...}`; decrypt the whole file once you have all of it.
+- A busy vault answers `429 busy`. Try again in a moment. To resume a large download, save it to disk and ask for the rest with
+  `DownloadFileParams{Range: &client.ByteRange{Start: saved}}`, where `saved` is the number of bytes you have. Set `Length` to read that many
+  bytes only. A `ByteRange` with `Length` 0 reads to the end of the file, so `&client.ByteRange{}` is the whole file. Decrypt the whole file
+  once you have all of it.
+- If a download is cut short by the network, you get the network error (`errors.Is(err, io.ErrUnexpectedEOF)`), not a file error. Download
+  again.
 
 ## 10. Handle errors
 
@@ -325,6 +347,24 @@ if errors.As(err, &apiErr) {
 ```
 
 Give the `RequestID` to support if you need help.
+
+## Other calls
+
+Read the audit log, newest first. Every filter is optional. Pass the id of the last event as `StartingAfter` to read the next page.
+
+```go
+events, err := c.ListAuditEvents(ctx, client.ListAuditEventsParams{
+	Limit: 50,
+	Type:  "api_key.created",            // one event type
+	Actor: "member",                     // "member" or "api_key"
+	From:  time.Now().AddDate(0, 0, -7), // at or after this time
+	To:    time.Now(),                   // before this time
+	Q:     "alice@example.com",          // a member's email, a key id, or text in the event
+})
+```
+
+The client does not send your API key to another server if a request is redirected there. This holds for the default HTTP client. If you
+pass your own with `WithHTTPClient` and it has a `CheckRedirect`, that function must do the same.
 
 ## More help
 
@@ -348,4 +388,4 @@ Run `make check`. It runs `gofmt`, `go vet` and the tests with the race detector
 MIT. See [LICENSE](LICENSE).
 
 The `disclosure` package uses [klauspost/compress](https://github.com/klauspost/compress) (v1.18.6) to read compressed files. It is
-under the BSD 3-Clause licence; its notice is in the module's `LICENSE` file.
+under the BSD 3-Clause licence. Go fetches it from its own source, and its licence comes with it.

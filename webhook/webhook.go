@@ -24,6 +24,9 @@ var (
 	ErrStale        = errors.New("webhook: the timestamp is outside the tolerance")
 )
 
+// now is the clock of ParseEvent. A test replaces it.
+var now = time.Now
+
 // Verify checks the header against the raw request body, exactly as received. Pass the endpoint's secret (whsec_...).
 // A zero tolerance means DefaultTolerance. The header may hold several v1 signatures (during a secret rotation): one
 // match is enough.
@@ -91,7 +94,7 @@ type Event struct {
 // ParseEvent verifies the request and then reads its event. Use it as the first thing your handler does, with the raw
 // body, before any other parsing. The same event can arrive more than once: ignore an id you have already handled.
 func ParseEvent(secret, header string, body []byte, tolerance time.Duration) (*Event, error) {
-	if err := Verify(secret, header, body, tolerance, time.Now()); err != nil {
+	if err := Verify(secret, header, body, tolerance, now()); err != nil {
 		return nil, err
 	}
 	var event Event

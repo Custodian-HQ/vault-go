@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -71,40 +72,48 @@ func TestEverySDKMethodMatchesTheSpecAndTheSpecIsFullyCovered(t *testing.T) {
 	c, _ := New("k", WithBaseURL(server.URL))
 	ctx := context.Background()
 
-	_, _ = c.Me(ctx)
-	_, _ = c.CreateCustomer(ctx, "ref")
-	_, _ = c.GetCustomer(ctx, "cus_1")
-	_ = c.DeleteCustomer(ctx, "cus_1")
-	_, _ = c.ResetCustomer(ctx, "cus_1", "https://a.example/x", "s")
-	_, _ = c.ListCustomers(ctx, ListCustomersParams{Limit: 5, StartingAfter: "cus_1", ExternalRef: "x", State: "reset: enrolment needed"})
-	_, _ = c.GetResetContactText(ctx)
-	_, _ = c.SetResetContactText(ctx, "Call us")
-	_, _ = c.CreateSession(ctx, CreateSessionParams{Customer: "cus_1", Purpose: PurposeEnrol, ReturnURL: "https://a.example/x", State: "s"})
-	_, _ = c.GetSession(ctx, "ses_1")
-	_, _ = c.ListRecords(ctx, ListRecordsParams{Customer: "cus_1", Limit: 5, StartingAfter: "rec_1"})
-	_, _ = c.GetRecord(ctx, "rec_1")
-	_, _ = c.ListTemplates(ctx)
-	_, _ = c.CreateTemplate(ctx, Template{Name: "kyc", Keys: []Key{{Name: "a"}}})
-	_, _ = c.GetTemplate(ctx, "kyc")
-	_, _ = c.ReplaceTemplate(ctx, "kyc", []Key{{Name: "b"}})
-	_ = c.DeleteTemplate(ctx, "kyc")
-	_, _ = c.GetRecoveryPolicy(ctx)
-	_, _ = c.SetRecoveryPolicy(ctx, 3)
-	_, _ = c.ListWebhookEndpoints(ctx)
-	_, _ = c.ListWebhookDeliveries(ctx, ListDeliveriesParams{Endpoint: "we_1", Limit: 5, StartingAfter: 9})
-	_ = c.RetryWebhookDelivery(ctx, 7)
-	_, _ = c.ListDisclosureKeys(ctx)
-	_, _ = c.CreateDisclosure(ctx, CreateDisclosureParams{Record: "rec_1", Keys: []string{"a"}, Reason: "r", Fingerprint: "f"})
-	_, _ = c.GetDisclosure(ctx, "dsc_1")
-	_, _ = c.ListDisclosures(ctx, ListDisclosuresParams{Status: "pending", Limit: 5, StartingAfter: "dsc_1"})
-	_, _ = c.CancelDisclosure(ctx, "dsc_1")
-	_, _ = c.GetDisclosureEnvelope(ctx, "dsc_1")
-	if body, err := c.DownloadDisclosedFile(ctx, "dsc_1", "passport", DownloadFileParams{}); err == nil {
+	chk := func(_ any, err error) {
+		t.Helper()
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	chk(c.Me(ctx))
+	chk(c.CreateCustomer(ctx, "ref"))
+	chk(c.GetCustomer(ctx, "cus_1"))
+	chk(nil, c.DeleteCustomer(ctx, "cus_1"))
+	chk(c.ResetCustomer(ctx, "cus_1", "https://a.example/x", "s"))
+	chk(c.ListCustomers(ctx, ListCustomersParams{Limit: 5, StartingAfter: "cus_1", ExternalRef: "x", State: "reset: enrolment needed"}))
+	chk(c.GetResetContactText(ctx))
+	chk(c.SetResetContactText(ctx, "Call us"))
+	chk(c.CreateSession(ctx, CreateSessionParams{Customer: "cus_1", Purpose: PurposeEnrol, ReturnURL: "https://a.example/x", State: "s"}))
+	chk(c.GetSession(ctx, "ses_1"))
+	chk(c.ListRecords(ctx, ListRecordsParams{Customer: "cus_1", Limit: 5, StartingAfter: "rec_1"}))
+	chk(c.GetRecord(ctx, "rec_1"))
+	chk(c.ListTemplates(ctx))
+	chk(c.CreateTemplate(ctx, Template{Name: "kyc", Keys: []Key{{Name: "a"}}}))
+	chk(c.GetTemplate(ctx, "kyc"))
+	chk(c.ReplaceTemplate(ctx, "kyc", []Key{{Name: "b"}}))
+	chk(nil, c.DeleteTemplate(ctx, "kyc"))
+	chk(c.GetRecoveryPolicy(ctx))
+	chk(c.SetRecoveryPolicy(ctx, 3))
+	chk(c.ListWebhookEndpoints(ctx))
+	chk(c.ListWebhookDeliveries(ctx, ListDeliveriesParams{Endpoint: "we_1", Limit: 5, StartingAfter: 9}))
+	chk(nil, c.RetryWebhookDelivery(ctx, 7))
+	chk(c.ListDisclosureKeys(ctx))
+	chk(c.CreateDisclosure(ctx, CreateDisclosureParams{Record: "rec_1", Keys: []string{"a"}, Reason: "r", Fingerprint: "f"}))
+	chk(c.GetDisclosure(ctx, "dsc_1"))
+	chk(c.ListDisclosures(ctx, ListDisclosuresParams{Status: "pending", Limit: 5, StartingAfter: "dsc_1"}))
+	chk(c.CancelDisclosure(ctx, "dsc_1"))
+	chk(c.GetDisclosureEnvelope(ctx, "dsc_1"))
+	if body, err := c.DownloadDisclosedFile(ctx, "dsc_1", "passport", DownloadFileParams{}); err != nil {
+		t.Error(err)
+	} else {
 		body.Close()
 	}
-	_, _ = c.AckDisclosure(ctx, "dsc_1")
-	_, _ = c.GetUsage(ctx, time.Time{}, time.Time{})
-	_, _ = c.ListAuditEvents(ctx, 5, 9)
+	chk(c.AckDisclosure(ctx, "dsc_1"))
+	chk(c.GetUsage(ctx, time.Time{}, time.Time{}))
+	chk(c.ListAuditEvents(ctx, ListAuditEventsParams{Limit: 5, StartingAfter: 9}))
 
 	operations := specOperations(t)
 	covered := map[string]bool{}
@@ -135,8 +144,10 @@ func TestEverySDKMethodMatchesTheSpecAndTheSpecIsFullyCovered(t *testing.T) {
 func TestResourceMethodsSendAndReadTheRightShapes(t *testing.T) {
 	var gotMethod, gotPath, gotQuery, gotBody string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body := make([]byte, r.ContentLength)
-		_, _ = r.Body.Read(body)
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Error(err)
+		}
 		gotMethod, gotPath, gotQuery, gotBody = r.Method, r.URL.Path, r.URL.RawQuery, string(body)
 		switch {
 		case r.URL.Path == "/sessions":
@@ -175,8 +186,10 @@ func TestResourceMethodsSendAndReadTheRightShapes(t *testing.T) {
 func TestDisclosureMethodsSendAndReadTheRightShapes(t *testing.T) {
 	var gotMethod, gotPath, gotQuery, gotBody string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body := make([]byte, r.ContentLength)
-		_, _ = r.Body.Read(body)
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Error(err)
+		}
 		gotMethod, gotPath, gotQuery, gotBody = r.Method, r.URL.Path, r.URL.RawQuery, string(body)
 		if r.URL.Path == "/disclosure-keys" && r.Method == http.MethodGet {
 			w.Write([]byte(`{"data":[{"id":"dk_1","name":"Key","fingerprint":"` + strings.Repeat("ab", 32) + `","status":"retiring","retires_at":"2026-10-28T12:00:00Z"}]}`))
@@ -230,8 +243,10 @@ func TestRecordMethodsSendAndReadTheRightShapes(t *testing.T) {
 	}
 	body := ""
 	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		raw := make([]byte, r.ContentLength)
-		_, _ = r.Body.Read(raw)
+		raw, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Error(err)
+		}
 		body = string(raw)
 		w.WriteHeader(201)
 		w.Write([]byte(`{"id":"ses_1","customer":"cus_1","purpose":"view","status":"created","livemode":false,"return_url":"https://a.example/x","state":"s","expires_at":"2026-10-27T12:00:00Z","created_at":"2026-10-27T11:45:00Z","record":"rec_1","url":"https://vault.example/b/org_x/view#st=tok"}`))
@@ -311,7 +326,7 @@ func TestAuditEventReadsEveryFieldOfTheSpec(t *testing.T) {
 	}))
 	defer server.Close()
 	c, _ := New("k", WithBaseURL(server.URL))
-	events, err := c.ListAuditEvents(context.Background(), 5, 0)
+	events, err := c.ListAuditEvents(context.Background(), ListAuditEventsParams{Limit: 5})
 	if err != nil || len(events) != 2 {
 		t.Fatalf("events %v, err %v", events, err)
 	}
@@ -354,7 +369,7 @@ func TestDownloadDisclosedFileStreamsTheBodyAndSendsTheRange(t *testing.T) {
 		t.Errorf("path %s, range %q, auth %q, idempotency %q", gotPath, gotRange, gotAuth, gotIdem)
 	}
 
-	for want, r := range map[string]ByteRange{"bytes=10-": {Start: 10, End: -1}, "bytes=0-1048575": {Start: 0, End: 1048575}} {
+	for want, r := range map[string]ByteRange{"bytes=0-": {}, "bytes=10-": {Start: 10}, "bytes=0-1048575": {Length: 1 << 20}, "bytes=100-149": {Start: 100, Length: 50}} {
 		body, err := c.DownloadDisclosedFile(ctx, "dsc_1", "passport", DownloadFileParams{Range: &r})
 		if err != nil {
 			t.Fatal(err)
@@ -365,8 +380,10 @@ func TestDownloadDisclosedFileStreamsTheBodyAndSendsTheRange(t *testing.T) {
 			t.Errorf("range %q, want %q", gotRange, want)
 		}
 	}
-	if _, err := c.DownloadDisclosedFile(ctx, "dsc_1", "passport", DownloadFileParams{Range: &ByteRange{Start: 5, End: 2}}); err == nil {
-		t.Error("a range that ends before it starts was sent")
+	for name, r := range map[string]ByteRange{"a negative start": {Start: -1}, "a negative length": {Start: 5, Length: -1}, "an end that overflows": {Start: math.MaxInt64, Length: 2}} {
+		if _, err := c.DownloadDisclosedFile(ctx, "dsc_1", "passport", DownloadFileParams{Range: &r}); err == nil {
+			t.Errorf("%s was sent", name)
+		}
 	}
 }
 
@@ -392,7 +409,7 @@ func TestDownloadDisclosedFileErrors(t *testing.T) {
 	}
 	// A server that ignores the range would hand back the whole file where a part was expected.
 	status, body = http.StatusOK, "whole file"
-	if _, err := c.DownloadDisclosedFile(ctx, "dsc_1", "passport", DownloadFileParams{Range: &ByteRange{Start: 10, End: -1}}); err == nil {
+	if _, err := c.DownloadDisclosedFile(ctx, "dsc_1", "passport", DownloadFileParams{Range: &ByteRange{Start: 10}}); err == nil {
 		t.Error("a 200 answer to a range request was accepted")
 	}
 }

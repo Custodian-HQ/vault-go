@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"runtime"
 	"sync"
 
 	"github.com/klauspost/compress/zstd"
@@ -16,7 +17,7 @@ const (
 )
 
 var zstdDecoder = sync.OnceValues(func() (*zstd.Decoder, error) {
-	return zstd.NewReader(nil, zstd.WithDecoderConcurrency(1), zstd.WithDecoderMaxMemory(zstdBlockSize), zstd.WithDecoderMaxWindow(zstdBlockSize))
+	return zstd.NewReader(nil, zstd.WithDecoderConcurrency(min(runtime.GOMAXPROCS(0), 8)), zstd.WithDecoderMaxMemory(zstdBlockSize), zstd.WithDecoderMaxWindow(zstdBlockSize))
 })
 
 // recordReader reads the zstd record list in the plaintext of a file: a 4-byte length, then one frame that holds one block.
@@ -79,7 +80,8 @@ func decodeBlock(frame, dst []byte) ([]byte, error) {
 
 // short reports a read that ended inside a record. Errors of the layer below, such as ErrFileOpen, pass through.
 func short(err error) error {
-	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+	// Equality, not errors.Is: a cut connection comes wrapped in a readError and must pass through.
+	if err == io.EOF || err == io.ErrUnexpectedEOF {
 		return ErrFileRecords
 	}
 	return err

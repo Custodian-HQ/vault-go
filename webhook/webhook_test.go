@@ -1,9 +1,14 @@
 package webhook
 
 import (
+	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -118,5 +123,85 @@ func TestCustomerSignInLimitReachedReadsItsObjectAndRefusesOtherEvents(t *testin
 	event.Type = "recovery.action_required"
 	if _, err := event.CustomerSignInLimitReached(); err == nil {
 		t.Error("another event type must be refused")
+	}
+}
+
+func sign(secret string, ts int64, body []byte) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(strconv.FormatInt(ts, 10) + "."))
+	mac.Write(body)
+	return "t=" + strconv.FormatInt(ts, 10) + ",v1=" + hex.EncodeToString(mac.Sum(nil))
+}
+
+func at(t *testing.T, ts int64) {
+	t.Helper()
+	old := now
+	now = func() time.Time { return time.Unix(ts, 0) }
+	t.Cleanup(func() { now = old })
+}
+
+func TestParseEventGivesTheEventOfAGoodRequest(t *testing.T) {
+	const secret, ts = "whsec_test_secret", 1700000000
+	body := []byte(`{"id":"evt_1","type":"session.completed","created":1700000000,"livemode":true,"data":{"object":{"id":"ses_1"}}}`)
+	at(t, ts+30)
+	event, err := ParseEvent(secret, sign(secret, ts, body), body, 0)
+	if err != nil || event == nil {
+		t.Fatalf("a good request: %v", err)
+	}
+	if event.ID != "evt_1" || event.Type != "session.completed" || event.Created != ts || !event.Livemode || string(event.Data.Object) != `{"id":"ses_1"}` {
+		t.Errorf("the event was read wrong: %+v", event)
+	}
+
+	if _, err := ParseEvent("whsec_other", sign(secret, ts, body), body, 0); !errors.Is(err, ErrBadSignature) {
+		t.Errorf("another secret: %v", err)
+	}
+	if _, err := ParseEvent(secret, sign(secret, ts, body), append(bytes.Clone(body), ' '), 0); !errors.Is(err, ErrBadSignature) {
+		t.Errorf("a body that changed after it was signed: %v", err)
+	}
+}
+
+func TestParseEventRefusesABodyThatIsNotAnEventEvenWithAGoodSignature(t *testing.T) {
+	const secret, ts = "whsec_test_secret", 1700000000
+	at(t, ts)
+	body := []byte(`{"id":"evt_1","type":`)
+	event, err := ParseEvent(secret, sign(secret, ts, body), body, 0)
+	if err == nil || event != nil {
+		t.Fatalf("malformed JSON gave %+v, %v", event, err)
+	}
+	for _, sentinel := range []error{ErrBadHeader, ErrBadSignature, ErrStale} {
+		if errors.Is(err, sentinel) {
+			t.Errorf("a parse error must not look like %v", sentinel)
+		}
+	}
+}
+
+func TestTheToleranceIsTheOneYouGiveAndZeroMeansTheDefault(t *testing.T) {
+	const secret, ts = "whsec_test_secret", 1700000000
+	body := []byte(`{"id":"evt_1"}`)
+	header := sign(secret, ts, body)
+	for _, c := range []struct {
+		name      string
+		age       time.Duration
+		tolerance time.Duration
+		want      error
+	}{
+		{"inside the default", 4 * time.Minute, 0, nil},
+		{"outside the default", 6 * time.Minute, 0, ErrStale},
+		{"a looser tolerance takes it", 6 * time.Minute, 15 * time.Minute, nil},
+		{"a stricter tolerance refuses it", 2 * time.Minute, time.Minute, ErrStale},
+		{"a stricter tolerance in the future", -2 * time.Minute, time.Minute, ErrStale},
+		{"exactly the tolerance", time.Minute, time.Minute, nil},
+		{"a negative tolerance means the default", 4 * time.Minute, -time.Second, nil},
+		{"a negative tolerance and an old request", 6 * time.Minute, -time.Second, ErrStale},
+	} {
+		got := Verify(secret, header, body, c.tolerance, time.Unix(ts, 0).Add(c.age))
+		if !errors.Is(got, c.want) || (c.want == nil && got != nil) {
+			t.Errorf("%s: want %v, got %v", c.name, c.want, got)
+		}
+		at(t, ts+int64(c.age/time.Second))
+		_, err := ParseEvent(secret, header, body, c.tolerance)
+		if c.want == nil && err != nil || c.want != nil && !errors.Is(err, c.want) {
+			t.Errorf("%s (ParseEvent): want %v, got %v", c.name, c.want, err)
+		}
 	}
 }
