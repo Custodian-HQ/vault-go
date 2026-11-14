@@ -24,7 +24,7 @@ var (
 )
 
 const (
-	envelopeVersion = 1
+	envelopeVersion = 2
 	signatureLabel  = "cdv/v1/sig-disclosure"
 	infoLabel       = "cdv/v1/disclosure"
 )
@@ -120,9 +120,20 @@ func OpenEnvelope(raw []byte, want Expected) (*Opened, error) {
 		return nil, ErrKey
 	}
 
+	kem, err := kemFor(want.Suite)
+	if err != nil {
+		return nil, ErrKey
+	}
+	key, err := kem.NewPrivateKey(want.PrivateKey)
+	if err != nil {
+		return nil, ErrKey
+	}
+	// The key is named from your own private key, so an envelope sealed to any other key fails the signature below.
+	rk := Fingerprint(want.Suite, key.PublicKey().Bytes())
+
 	statement := encodeMap([]pair{
 		{text("v"), uint_(uint64(w.V))}, {text("suite"), text(w.Suite)}, {text("request_id"), text(w.RequestID)}, {text("business_id"), text(w.BusinessID)},
-		{text("customer_id"), text(w.CustomerID)}, {text("kid"), text(w.KID)}, {text("enc"), bstr(enc)}, {text("commit"), bstr(commit)}, {text("ct"), bstr(ct)},
+		{text("customer_id"), text(w.CustomerID)}, {text("kid"), text(w.KID)}, {text("rk"), text(rk)}, {text("enc"), bstr(enc)}, {text("commit"), bstr(commit)}, {text("ct"), bstr(ct)},
 	})
 	message := append(append([]byte(signatureLabel), 0), statement...)
 	if len(want.SignKey) != ed25519.PublicKeySize || len(sig) != ed25519.SignatureSize || !ed25519.Verify(want.SignKey, message, sig) {
@@ -138,16 +149,8 @@ func OpenEnvelope(raw []byte, want Expected) (*Opened, error) {
 		}
 	}
 	aad := encodeTextArray(names)
-	info := append(append(append([]byte(infoLabel), 0), w.BusinessID...), append([]byte{0}, w.RequestID...)...)
+	info := append(append(append([]byte(infoLabel), 0), w.BusinessID...), append(append([]byte{0}, w.RequestID...), append([]byte{0}, rk...)...)...)
 
-	kem, err := kemFor(want.Suite)
-	if err != nil {
-		return nil, ErrKey
-	}
-	key, err := kem.NewPrivateKey(want.PrivateKey)
-	if err != nil {
-		return nil, ErrKey
-	}
 	recipient, err := hpke.NewRecipient(enc, key, hpke.HKDFSHA256(), hpke.AES256GCM(), info)
 	if err != nil {
 		return nil, ErrPayload

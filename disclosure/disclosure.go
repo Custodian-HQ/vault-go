@@ -20,8 +20,9 @@ const (
 )
 
 const (
-	commitLabel = "cdv/v1/commit"
-	commitSize  = 32
+	commitLabel      = "cdv/v1/commit"
+	commitSize       = 32
+	fingerprintLabel = "cdv/v1/dkfp"
 )
 
 // ErrCommitment means the stored commitment does not match the key that opened the message.
@@ -83,7 +84,7 @@ func Open(suite string, private, enc, info, aad, ciphertext, commit []byte) ([]b
 // disclosure_key_fingerprint. It is not a secret.
 func Fingerprint(suite string, publicKey []byte) string {
 	h := sha256.New()
-	h.Write([]byte("cdv/v1/dkfp"))
+	h.Write([]byte(fingerprintLabel))
 	h.Write([]byte{0})
 	h.Write([]byte(suite))
 	h.Write([]byte{0})

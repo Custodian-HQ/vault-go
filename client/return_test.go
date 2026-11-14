@@ -50,3 +50,11 @@ func TestApproveURLOnlyTakesHTTPSOrHTTPOnLocalhost(t *testing.T) {
 		}
 	}
 }
+
+func TestApproveURLReplacesAnFPAlreadyInTheFragment(t *testing.T) {
+	fp := strings.Repeat("ab", 32)
+	got, err := ApproveURL("https://vault.example/b/o/approve#st=t&fp="+strings.Repeat("cd", 32)+"&x=1&fp=1", fp)
+	if err != nil || got != "https://vault.example/b/o/approve#st=t&x=1&fp="+fp {
+		t.Errorf("got %q, %v", got, err)
+	}
+}

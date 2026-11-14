@@ -1,5 +1,5 @@
 {
-  "aad": "kind_label || 0x00 || customer_id || 0x00 || epoch (8 bytes, big endian)",
+  "aad": "secret copy: kind_label || 0x00 || customer_id || 0x00 || epoch (8 bytes, big endian). passkey copy: kind_label || 0x00 || customer_id || 0x00 || key id of the salt (first 8 bytes of SHA-256(salt))",
   "context": {
     "customer_id": "cus_0123",
     "epoch": 1
@@ -10,13 +10,24 @@
   "mk_commit_label": "cdv/v1/mk-commit",
   "passkey_copy": {
     "credential_id_hex": "909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
-    "envelope_hex": "01012fbbda77576b2760b0b1b2b3b4b5b6b7b8b9babba065329af04fdc261e7c188e05f53c4d59ce1703780deaa9ecf8c48d29958a03a1645efee82fa30dd0b1da85c7bb7860f253d7bcba914f7e824e57ccf3f93e93ee3f27fc0ec6f85cc351f769c6e5b3ca",
-    "label": "cdv/v1/passkey-copy",
+    "envelope_hex": "01012fbbda77576b2760b0b1b2b3b4b5b6b7b8b9babb13587ad5ade8b40c5bcc1c6f672ae7bad7a005bf43d43470017d2d1288d815860cd1c7b8671df8f5af6feaa5b13d5d57ba1fdd6b8eac80e316862232be5324bf6d4cc5b704426ce1d8baec04e2cdb5d0",
+    "key": "HKDF-SHA256(PRF output, info = label || credential id), 32 bytes. The copy is an envelope of W, the 32-byte wrapping key, not of the master key.",
+    "label": "cdv/v1/passkey-wrap-copy",
     "nonce_hex": "b0b1b2b3b4b5b6b7b8b9babb",
     "prf_output_hex": "707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f"
   },
+  "rotation": {
+    "challenge_hex": "e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+    "label": "cdv/v1/sig-secret-rotation",
+    "new_proof_public_hex": "882d0ea3b2864e7a587f3e698cea4459998312e655e05fa5e8b5119d8baac8cd",
+    "new_salt_hex": "3132333435363738393a3b3c3d3e3f40",
+    "rule": "Ed25519 by the OLD proof key over label || 0x00 || cbor(statement). The statement is { v: 1, id: customer id, challenge, epoch, mk_commit, secret_copy (envelope), salt (the NEW salt), m, t, p, new_proof_key }.",
+    "signature_hex": "31469f2e9a41d84950a5089fb62bffb61f2693183949921bfa00a734273e2f4d1dde7f4f3edfba88f46f8801b881b8093fd5f95a41c1483959557ac921db1901",
+    "statement_hex": "ab616d194c00617001617402617601626964686375735f303132336473616c74503132333435363738393a3b3c3d3e3f406565706f636801696368616c6c656e67655820e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff696d6b5f636f6d6d69745820104fcb586bc70bf69be07cb09d89bb99aa874b334dba40ba85fc91803120d5ee6b7365637265745f636f707958660101816b9e7c25d559c5505152535455565758595a5ba379eaa59719b290e4798526020bf81b11a9dad339ee263f1afe893fd9d978a993291ff16e64e7c3a282344dd2c002e7b78ce3adcd18a1a3a1c22b1ee930197c69f3cf7ea67a408589f1009b2194a5156d6e65775f70726f6f665f6b65795820882d0ea3b2864e7a587f3e698cea4459998312e655e05fa5e8b5119d8baac8cd"
+  },
   "secret_copy": {
-    "envelope_hex": "0101816b9e7c25d559c5505152535455565758595a5b6e740c4c2712ac993dceb340e56f3ba6ab0a22cea247d2582c327bccccc97f4eac014ae91247e513c0efa8a2c55793080cb4d1229d21a9c86b1b4df7f9d7f7e0f04a5bac1b906d3d482c76e7320089f4",
+    "envelope_hex": "0101816b9e7c25d559c5505152535455565758595a5ba379eaa59719b290e4798526020bf81b11a9dad339ee263f1afe893fd9d978a993291ff16e64e7c3a282344dd2c002e7b78ce3adcd18a1a3a1c22b1ee930197c69f3cf7ea67a408589f1009b2194a515",
+    "key": "W = HKDF-SHA256(Argon2id(secret, salt, params), info = wrap_label), 32 bytes. The copy is an envelope of enc(MK) under W. The proof key seed is HKDF-SHA256(the same Argon2id output, info = proof_label).",
     "label": "cdv/v1/secret-copy",
     "nonce_hex": "505152535455565758595a5b",
     "params": {
@@ -24,8 +35,12 @@
       "t": 2,
       "p": 1
     },
+    "proof_label": "cdv/v1/secret-proof-key",
+    "proof_public_hex": "42558ebc6f72202a24cdc614bab230343a0466f2611c9ebb5537de69d8e9d55e",
     "salt_hex": "303132333435363738393a3b3c3d3e3f",
-    "secret_utf8": "correct horse battery staple"
+    "secret_utf8": "correct horse battery staple",
+    "wrap_hex": "5d36f3115c10afc9813431444e41bb71431ce0c568935b3f5d010ca9590b3123",
+    "wrap_label": "cdv/v1/secret-wrap"
   },
   "sign_seed_wrap": {
     "envelope_hex": "0101f2dcce8e0f47f9f1d0d1d2d3d4d5d6d7d8d9dadba949fdda2ffe5198134bf8a6e2c5d305cde5e5536ac98463ac73987d343d894a837304b18807673f49dc9e4632db011bcb5407eaf40fe929b47347c018d946605601692a286192d65cf9100d5bc30115",

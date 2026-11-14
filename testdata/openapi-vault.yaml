@@ -6,7 +6,7 @@ info:
   summary: The business API of Custodian Data Vault.
   description: |
     Your servers use this API to start customer sessions, read results and manage the vault's settings. Customers never
-    use it: they use the hosted pages.
+    use it: they use the vault pages.
 
     ## Conventions
 
@@ -35,12 +35,10 @@ info:
 
     ## Personal data we process about your customers
 
-    Besides the ciphertext of the data you ask them to keep, the vault holds three items in plain text about a customer: the **id and
-    `external_ref`** you gave, the **first and last name** the customer confirmed at enrolment (1 to 60 characters each), and the
-    **email addresses of the trusted contacts** the customer chose. The name is not secret. It is shown only to the customer, to you
-    (in the customer record) and, after their passkey sign-in, to a trusted contact the customer chose, and it is in the emails to
-    that contact. It is never given to any other business. It is deleted when the customer is reset or deleted. No email carries a
-    reason, asset type, amount, recovery code or key.
+    Besides the ciphertext of the data you ask them to keep, the vault holds two items in plain text about a customer: the **id and
+    `external_ref`** you gave, and the **first and last name** the customer confirmed at enrolment (1 to 60 characters each). The name
+    is not secret. It is shown only to the customer and to you (in the customer record). It is never given to any other business. It is
+    deleted when the customer is reset or deleted. No email carries a reason, asset type, amount, recovery code or key.
 
     ## Sandbox (test mode)
 
@@ -52,7 +50,7 @@ info:
       number your plan allows. Delete test customers or reset the sandbox in the console.
     - **Data expiry.** Test data is deleted automatically after the number of days your plan sets, after a warning email. The console
       has a **Reset sandbox** action that deletes all test data at once. Settings, keys and webhook endpoints stay.
-    - **Test mode banner.** Every hosted screen in test mode shows a "Test mode" banner. It is part of the hosted page and cannot be
+    - **Test mode banner.** Every vault screen in test mode shows a "Test mode" banner. It is part of the vault page and cannot be
       changed or hidden.
     - **Separate domain.** Test links start on the sandbox domain, with its own passkeys. Nothing moves from test to live.
     - **Review.** Accounts that show signs of real use in test mode get an email. Nothing is blocked automatically.
@@ -72,7 +70,7 @@ info:
     Live mode opens when the first invoice of the plan you chose is paid. Until then, new live customers and sessions are refused with `402` and the code `billing_payment_required`.
 
     If a payment fails and the grace period ends, live mode pauses **new** work: a new customer (`402`, code `billing_suspended`) and
-    new `enrol`, `entry` and `approve` sessions. Your customers can still recover and manage their own data, and test mode is never paused.
+    new `enrol`, `entry` and `approve` sessions. Your customers can still manage their own data, and test mode is never paused.
 
     Custodian staff can also pause a business. The refusals are the same, with the code `business_suspended`. A paused business cannot fetch a disclosed result. Customers can still approve or reject a request that is already open.
 
@@ -95,7 +93,7 @@ tags:
   - name: Customers
     description: The people who keep data in your vault.
   - name: Sessions
-    description: A visit of a customer to the hosted vault pages, started by you.
+    description: A visit of a customer to the vault pages, started by you.
   - name: Records
     description: What a customer keeps with you. You see tokens and key names, never values.
   - name: Templates
@@ -153,7 +151,7 @@ paths:
       tags: [Settings]
       operationId: setResetContactText
       summary: Set the contact text for a reset request
-      description: Plain text, 1 to 200 characters, no control characters. Tell the customer how to reach you.
+      description: Plain text, 1 to 200 characters, no control characters. Tell the customer how to reach you. Live customers read this text, so only a live API key may change it.
       requestBody:
         required: true
         content:
@@ -171,46 +169,11 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '401': { $ref: '#/components/responses/Unauthorized' }
-        '429': { $ref: '#/components/responses/RateLimited' }
-        '500': { $ref: '#/components/responses/ServerError' }
-
-  /recovery-policy:
-    get:
-      tags: [Settings]
-      operationId: getRecoveryPolicy
-      summary: Get the recovery policy
-      description: How many holders are needed to recover a customer's vault.
-      responses:
-        '200':
-          description: The policy.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/RecoveryPolicy' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '429': { $ref: '#/components/responses/RateLimited' }
-        '500': { $ref: '#/components/responses/ServerError' }
-    put:
-      tags: [Settings]
-      operationId: setRecoveryPolicy
-      summary: Set the recovery policy
-      description: The threshold must be between 2 and 10. Unknown fields are refused.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/RecoveryPolicy' }
-      responses:
-        '200':
-          description: The policy as saved.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/RecoveryPolicy' }
-        '400':
-          description: The body is not valid (`invalid_body`) or the threshold is out of range (`invalid_recovery_threshold`).
+        '403':
+          description: A test key tried to change the text (`reset_contact_text_live_only`). Use a live key.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
 
@@ -292,7 +255,7 @@ paths:
       operationId: deleteCustomer
       summary: Delete a customer
       description: |
-        Deletes the customer and all their data at once: records, files, key copies, recovery holders, visits and passkeys. The customer is not
+        Deletes the customer and all their data at once: records, files, key copies, visits and passkeys. The customer is not
         asked, and this cannot be undone. The `customer.deleted` event is sent. Your audit log keeps the event, the time and the customer id only.
         The `external_ref` can be used again.
       parameters:
@@ -314,14 +277,14 @@ paths:
       operationId: resetCustomer
       summary: Start a reset of a customer
       description: |
-        Use this when a customer has lost every way into their vault, including recovery. A reset starts **only** here: a customer who asks for
-        one on the recovery screen only sends you `customer.reset_requested` (metadata: the customer, your reference and the time), which deletes
+        Use this when a customer has lost the secret and the passkey. A reset starts **only** here: a customer who asks for
+        one on a sign-in screen ("I forgot my secret") only sends you `customer.reset_requested` (metadata: the customer, your reference and the time), which deletes
         nothing. At most 3 requests per customer per day. Custodian sends the customer no message. It starts a `reset` visit and sends nothing else:
-        **nothing is deleted until the customer confirms** on the hosted page, which tells them the old data cannot be got back. No key is needed.
+        **nothing is deleted until the customer confirms** on the vault page, which tells them the old data cannot be got back. No key is needed.
         Send the customer to the `url` in the answer. It is shown once and works for 15 minutes, once.
 
-        When the customer confirms, in one step and with no grace period, the vault deletes all records, files, both key copies, all shares,
-        all holders, passkeys and the customer's name. Old data cannot be read again. The customer reference stays, with state
+        When the customer confirms, in one step and with no grace period, the vault deletes all records, files, both key copies,
+        passkeys and the customer's name. Old data cannot be read again. The customer reference stays, with state
         `reset: enrolment needed`, and the customer enrols again with an `enrol` visit. You get `record.deleted` for each old record token,
         `customer.reset` (with `initiated_by`: `customer_request` if a `customer.reset_requested` came before for this customer, else `business`) and `session.completed`. The `customer.enrolled` event of the next enrolment carries a new vault-sign key.
         Your audit log keeps the confirmation. The customer's earlier audit events lose their details.
@@ -449,7 +412,7 @@ paths:
       summary: Ask for a disclosure
       description: |
         Asks one customer to let you see named keys of one of their records. Name the customer, the record, or both (see the request body). Send the fingerprint of your disclosure key (`disclosure_key_fingerprint`, 64 hexadecimal characters). It must match a key registered in this mode, so a wrong setting on your server is found here and not by your customer.
-        Then start a session with the `approve` purpose and the id of this request. **Add your disclosure key's fingerprint to the link's fragment before you send the customer there** (`<link>&fp=<fingerprint>`; the SDKs have `ApproveURL`): the fingerprint comes from your own app configuration, not from the vault, and the hosted page stops the request if the key it receives does not match it. You see nothing until the customer approves; then fetch the envelope with `GET /disclosures/{id}/envelope`. The request lives 15 minutes unless you send `expires_in` (60 to 259200 seconds).
+        Then start a session with the `approve` purpose and the id of this request. **Add your disclosure key's fingerprint to the link's fragment before you send the customer there** (`<link>&fp=<fingerprint>`; the SDKs have `ApproveURL`): the fingerprint comes from your own app configuration, not from the vault, and the vault page stops the request if the key it receives does not match it. You see nothing until the customer approves; then fetch the envelope with `GET /disclosures/{id}/envelope`. The request lives 15 minutes unless you send `expires_in` (60 to 259200 seconds).
         A live request is refused with `402` when live mode is paused because a payment failed. Disclosures are never billed.
       requestBody:
         required: true
@@ -513,10 +476,17 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Disclosure' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
         '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '404':
+          description: No such disclosure request in your organization and this mode (`disclosure_not_found`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: The request is no longer waiting for the customer, so it cannot be cancelled (`disclosure_not_pending`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
 
@@ -547,10 +517,18 @@ paths:
               schema: { $ref: '#/components/schemas/Envelope' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '402': { $ref: '#/components/responses/PaymentRequired' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
+        '404':
+          description: No such disclosure request in your organization and this mode (`disclosure_not_found`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: There is no envelope to fetch. The code is `disclosure_pending` while the customer has not answered, or `disclosure_not_approved` when the request was rejected, cancelled or expired.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '410':
-          description: The envelope was acknowledged, or was not fetched in time, and the vault deleted it.
+          description: The vault deleted the envelope. The code is `envelope_acknowledged` after you acknowledged it, or `envelope_expired` when it was not fetched in 15 minutes. Ask the customer again.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -611,8 +589,8 @@ paths:
         '402': { $ref: '#/components/responses/PaymentRequired' }
         '404':
           description: |
-            No file to serve (`file_not_found`): the envelope was acknowledged or has expired, the key was not approved, or the request is
-            not yours. Every refusal gives this same answer.
+            No file to serve (`file_not_found`): the request does not exist or is not yours, it is not approved, the envelope was acknowledged or
+            has expired, or the key was not approved. Every refusal gives this same answer.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -626,7 +604,11 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-        '429': { $ref: '#/components/responses/RateLimited' }
+        '429':
+          description: Too many requests (wait for `Retry-After` seconds), or 16 file transfers already run across the vault (`busy`). Try again in a moment.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '500': { $ref: '#/components/responses/ServerError' }
 
   /disclosures/{id}/ack:
@@ -649,10 +631,18 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Disclosure' }
         '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
+        '404':
+          description: No such disclosure request in your organization and this mode (`disclosure_not_found`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: The request is not approved (it is pending, rejected, cancelled or expired), so there is nothing to acknowledge (`disclosure_not_approved`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '410':
-          description: The envelope was not fetched in time and the vault deleted it.
+          description: The envelope was not fetched in time and the vault deleted it (`envelope_expired`).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -667,7 +657,7 @@ paths:
       description: |
         Starts one visit of a customer to the vault. Send the customer to the `url` in the answer. The link is shown **once** and works for 15 minutes, once.
         
-        **Purposes.** `enrol` (the customer is not enrolled yet), and for an enrolled customer: `entry` and `view` (give either a `template` or a list of `keys`), `approve` (give a `disclosure`), `recover`, `recovery_settings`, `reset`, `delete` and `holder` (the customer's second device acts as a recovery holder).
+        **Purposes.** `enrol` (the customer is not enrolled yet), and for an enrolled customer: `entry` and `view` (give either a `template` or a list of `keys`), `approve` (give a `disclosure`), `recovery_settings`, `reset` and `delete`.
         
         **How a visit ends.** `enrol`, `entry` and `approve` end as `completed` when their work is saved or decided. `view` and `recovery_settings` have nothing to save, so they end as `completed` when the customer presses Done. A visit ends as `cancelled` when the customer cancels, or after too many wrong secrets.
         
@@ -977,7 +967,7 @@ components:
         total: { type: integer, description: How many events match the filters in all, not only on this page. }
     EventType:
       type: string
-      enum: ["*", session.completed, session.cancelled, session.expired, customer.enrolled, customer.reset, customer.reset_requested, customer.deleted, customer.recovery_status_changed, record.created, record.updated, record.deleted, disclosure.requested, disclosure.approved, disclosure.rejected, disclosure.cancelled, disclosure.expired, disclosure.check_failed, customer.sign_in_limit_reached, recovery.action_required, recovery.holder_declined]
+      enum: ["*", session.completed, session.cancelled, session.expired, customer.enrolled, customer.reset, customer.reset_requested, customer.deleted, record.created, record.updated, record.deleted, disclosure.requested, disclosure.approved, disclosure.rejected, disclosure.cancelled, disclosure.expired, disclosure.check_failed, customer.sign_in_limit_reached]
     WebhookEndpoint:
       type: object
       properties:
@@ -988,7 +978,7 @@ components:
         status: { type: string, enum: [enabled, disabled] }
         created_at: { type: string, format: date-time }
         secret_last4: { type: string, description: The last 4 characters of the signing secret, to tell secrets apart. }
-        failing_deliveries: { type: integer, description: Events still retrying, plus events that gave up in the last 24 hours. Filled in lists. }
+        failing_deliveries: { type: integer, description: "Events still retrying, plus events that gave up in the last 24 hours. Filled in lists." }
         last_delivery_at: { type: string, format: date-time, description: When the newest event for this endpoint was delivered, gave up, or was queued. Only in lists. }
     WebhookEndpointList:
       type: object
@@ -1051,7 +1041,7 @@ components:
       properties:
         customer: { type: string, example: cus_0f8a1c2d3e4f5a6b7c8d9e0f1a2b3c4d }
         record: { type: string, example: rec_0f8a1c2d3e4f5a6b7c8d9e0f1a2b3c4d }
-        keys: { type: array, minItems: 1, items: { type: string }, description: The names of the keys you ask for. The record must have each one, as a value or as a finished file. A request can mix both. }
+        keys: { type: array, minItems: 1, items: { type: string }, description: "The names of the keys you ask for. The record must have each one, as a value or as a finished file. A request can mix both." }
         reason: { type: string, maxLength: 280, description: Shown to the customer. }
         expires_in: { type: integer, minimum: 60, maximum: 259200, default: 900, description: Seconds the request waits for the customer. }
         disclosure_key_fingerprint: { type: string }
@@ -1070,7 +1060,7 @@ components:
         decided_at: { type: [string, 'null'], format: date-time }
         acked_at: { type: [string, 'null'], format: date-time, description: When you acknowledged the envelope. The vault deleted it then. }
         envelope_ready: { type: boolean, description: True while you can still fetch the envelope. }
-        files: { type: array, items: { type: object, properties: { key: { type: string }, size_bytes: { type: integer, format: int64 } } }, description: The file keys the customer approved, with the size of each stored file. Empty unless the request is approved and `envelope_ready` is true. }
+        files: { type: array, items: { type: object, properties: { key: { type: string }, size_bytes: { type: integer, format: int64 } } }, description: "The file keys the customer approved, with the size of each stored file. Empty unless the request is approved and `envelope_ready` is true." }
         created_at: { type: string, format: date-time }
     Envelope:
       type: object
@@ -1100,7 +1090,7 @@ components:
       required: [external_ref]
       properties:
         external_ref: { type: string, minLength: 1, maxLength: 255, description: Your own id for this person. One per mode. }
-        first_name: { type: string, minLength: 1, maxLength: 60, description: The name you offer for this person, with `last_name` (both or none). Plain text; control characters are removed. The customer sees it on the enrolment screen and must confirm or correct it before enrolment ends. After that you cannot change it. }
+        first_name: { type: string, minLength: 1, maxLength: 60, description: "The name you offer for this person, with `last_name` (both or none). Plain text; control characters are removed. The customer sees it on the enrolment screen and must confirm or correct it before enrolment ends. After that you cannot change it." }
         last_name: { type: string, minLength: 1, maxLength: 60, description: See `first_name`. }
     Customer:
       type: object
@@ -1110,10 +1100,10 @@ components:
         livemode: { type: boolean }
         state: { type: string, enum: [active, 'reset: enrolment needed'] }
         enrolled: { type: boolean, description: True once the customer has enrolled in the vault. }
-        first_name: { type: string, description: The name the customer confirmed, or the name you offered until they confirm. }
+        first_name: { type: string, description: "The name the customer confirmed, or the name you offered until they confirm." }
         last_name: { type: string }
         name_confirmed: { type: boolean, description: True once the customer confirmed or corrected the name at enrolment. After that the name cannot be changed through the API. }
-        vault_sign_key: { type: string, description: The customer's public signing key, base64url. The customer signs every disclosure with it. Keep the one from the `customer.enrolled` webhook and check envelopes against that one; do not rely on this field alone. }
+        vault_sign_key: { type: string, description: "The customer's public signing key, base64url. The customer signs every disclosure with it. Keep the one from the `customer.enrolled` webhook and check each sealed package (envelope) against that one; do not rely on this field alone." }
         created_at: { type: string, format: date-time }
         reset_at: { type: string, format: date-time, description: 'When the customer last confirmed a reset. Empty if never. While `state` is `reset: enrolment needed`, the customer must enrol again.' }
     CustomerPage:
@@ -1126,9 +1116,9 @@ components:
       required: [customer, purpose, return_url, state]
       properties:
         customer: { type: string, description: The customer id. }
-        purpose: { type: string, enum: [enrol, entry, view, approve, recover, recovery_settings, reset, delete, holder] }
+        purpose: { type: string, enum: [enrol, entry, view, approve, recovery_settings, reset, delete] }
         return_url: { type: string, description: Exactly one of your registered return URLs for this mode. }
-        state: { type: string, pattern: '^[A-Za-z0-9._~-]{1,255}$', description: Your own value, returned unchanged. Tie it to your signed-in user. }
+        state: { type: string, pattern: '^[A-Za-z0-9._~-]{1,255}$', description: "Your own value, returned unchanged. Tie it to your signed-in user." }
         template: { type: string, description: For entry and view. Use this or keys. }
         keys: { type: array, items: { $ref: '#/components/schemas/Key' }, description: For entry and view. Use this or template. }
         record: { type: string, description: 'The record token. A view needs it. An entry may name one to add keys to that record; without it, the entry makes a new record.' }
@@ -1213,11 +1203,6 @@ components:
       required: [text]
       properties:
         text: { type: string, minLength: 1, maxLength: 200, default: Contact the business that gave you this link }
-    RecoveryPolicy:
-      type: object
-      required: [recovery_threshold]
-      properties:
-        recovery_threshold: { type: integer, minimum: 2, maximum: 10 }
     Me:
       type: object
       required: [organization, name, livemode]

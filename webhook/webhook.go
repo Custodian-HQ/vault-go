@@ -22,15 +22,20 @@ var (
 	ErrBadHeader    = errors.New("webhook: the signature header is malformed")
 	ErrBadSignature = errors.New("webhook: the signature does not match")
 	ErrStale        = errors.New("webhook: the timestamp is outside the tolerance")
+	ErrNoSecret     = errors.New("webhook: the secret is empty")
 )
 
 // now is the clock of ParseEvent. A test replaces it.
 var now = time.Now
 
 // Verify checks the header against the raw request body, exactly as received. Pass the endpoint's secret (whsec_...).
-// A zero tolerance means DefaultTolerance. The header may hold several v1 signatures (during a secret rotation): one
-// match is enough.
+// A zero tolerance means DefaultTolerance. The header may hold several v1 signatures: one match is enough. The API signs with one
+// secret only, so after you rotate a secret, events fail until you deploy the new one.
 func Verify(secret, header string, body []byte, tolerance time.Duration, now time.Time) error {
+	// An empty key would let anyone sign a forged event.
+	if secret == "" {
+		return ErrNoSecret
+	}
 	if tolerance <= 0 {
 		tolerance = DefaultTolerance
 	}
@@ -102,86 +107,6 @@ func ParseEvent(secret, header string, body []byte, tolerance time.Duration) (*E
 		return nil, err
 	}
 	return &event, nil
-}
-
-// EventRecoveryStatusChanged is the type of the event that says share recovery turned on or off for a customer.
-const EventRecoveryStatusChanged = "customer.recovery_status_changed"
-
-// RecoveryStatusChanged is the object of a customer.recovery_status_changed event. It carries metadata only. Status is "on" or "off".
-// Reason is a code such as holder_removed, device_lost, holder_enrolled or secret_recovery; do not depend on the list being closed.
-// Holders counts the holders with keys after the change.
-type RecoveryStatusChanged struct {
-	Customer  string `json:"customer"`
-	Livemode  bool   `json:"livemode"`
-	Status    string `json:"status"`
-	Reason    string `json:"reason"`
-	Holders   int    `json:"holders"`
-	Threshold int    `json:"threshold"`
-	ChangedAt string `json:"changed_at"`
-}
-
-// RecoveryStatusChanged reads the object of a customer.recovery_status_changed event. It fails for any other event type.
-func (e *Event) RecoveryStatusChanged() (*RecoveryStatusChanged, error) {
-	if e.Type != EventRecoveryStatusChanged {
-		return nil, errors.New("webhook: not a " + EventRecoveryStatusChanged + " event")
-	}
-	var out RecoveryStatusChanged
-	if err := json.Unmarshal(e.Data.Object, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// EventRecoveryActionRequired is the type of the event that says the customer must unlock recovery settings so the shares are dealt again.
-const EventRecoveryActionRequired = "recovery.action_required"
-
-// RecoveryActionRequired is the object of a recovery.action_required event. It carries metadata only. HolderType is "contact" or "device".
-// Reason is holder_added, holder_removed or device_lost; do not depend on the list being closed.
-type RecoveryActionRequired struct {
-	Customer    string `json:"customer"`
-	Livemode    bool   `json:"livemode"`
-	Holder      string `json:"holder"`
-	HolderType  string `json:"holder_type"`
-	Reason      string `json:"reason"`
-	RequestedAt string `json:"requested_at"`
-}
-
-// RecoveryActionRequired reads the object of a recovery.action_required event. It fails for any other event type.
-func (e *Event) RecoveryActionRequired() (*RecoveryActionRequired, error) {
-	if e.Type != EventRecoveryActionRequired {
-		return nil, errors.New("webhook: not a " + EventRecoveryActionRequired + " event")
-	}
-	var out RecoveryActionRequired
-	if err := json.Unmarshal(e.Data.Object, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// EventRecoveryHolderDeclined is the type of the event that says a trusted contact did not expect a release request and declined it.
-const EventRecoveryHolderDeclined = "recovery.holder_declined"
-
-// RecoveryHolderDeclined is the object of a recovery.holder_declined event. It carries metadata only: no name and no email of the contact.
-// Other holders' requests stay open.
-type RecoveryHolderDeclined struct {
-	Customer   string `json:"customer"`
-	Livemode   bool   `json:"livemode"`
-	Holder     string `json:"holder"`
-	HolderType string `json:"holder_type"`
-	Recovery   string `json:"recovery"`
-	DeclinedAt string `json:"declined_at"`
-}
-
-// RecoveryHolderDeclined reads the object of a recovery.holder_declined event. It fails for any other event type.
-func (e *Event) RecoveryHolderDeclined() (*RecoveryHolderDeclined, error) {
-	if e.Type != EventRecoveryHolderDeclined {
-		return nil, errors.New("webhook: not a " + EventRecoveryHolderDeclined + " event")
-	}
-	var out RecoveryHolderDeclined
-	if err := json.Unmarshal(e.Data.Object, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
 }
 
 // EventCustomerSignInLimitReached is the type of the event that says a customer used the last slot of an hourly sign-in limit.

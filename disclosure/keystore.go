@@ -6,6 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
+
+	"github.com/Custodian-HQ/vault-go/webhook"
+)
+
+// The webhook event types that Observe acts on.
+const (
+	eventCustomerEnrolled = "customer.enrolled"
+	eventCustomerReset    = "customer.reset"
+	eventCustomerDeleted  = "customer.deleted"
 )
 
 var (
@@ -15,6 +24,11 @@ var (
 	// ErrKeyChanged means a customer.enrolled event names another key than the one you kept. A customer's key changes only after a reset or
 	// a deletion, and you hear of both with a webhook. Without one, treat this as an attack.
 	ErrKeyChanged = errors.New("disclosure: the customer's signing key changed without a reset")
+	// ErrResetNotApproved means a customer.reset or customer.deleted event did not erase the kept key, because ObserveOptions.ApproveReset is not set
+	// or said no. The key stays.
+	ErrResetNotApproved = errors.New("disclosure: the reset was not approved, so the kept signing key stays; set ObserveOptions.ApproveReset")
+	// ErrStaleEvent means the event is older than one already handled for the customer. Nothing changed. Treat it as handled and acknowledge the webhook.
+	ErrStaleEvent = errors.New("disclosure: the event is older than one already handled for this customer")
 )
 
 // KeyStore keeps each customer's vault-sign public key, as the customer.enrolled webhook gave it. Back it with your own database.
@@ -33,10 +47,37 @@ type AtomicKeyStore interface {
 	PutIfAbsent(customerID string, key ed25519.PublicKey) (stored bool, err error)
 }
 
+// EventClock is a KeyStore that also keeps the time of the last event handled for each customer. ObserveEvent uses it to refuse an old
+// event that arrives late, for example a retried customer.enrolled after a newer reset. Keep it in the same database as the keys.
+type EventClock interface {
+	// LastEvent is the created time of the last event handled for the customer, or 0 if none.
+	LastEvent(customerID string) (int64, error)
+	SetLastEvent(customerID string, created int64) error
+}
+
 // MemoryKeyStore is a KeyStore in memory. It is for tests and for programs that do not restart.
 type MemoryKeyStore struct {
-	mu   sync.Mutex
-	keys map[string]ed25519.PublicKey
+	mu    sync.Mutex
+	keys  map[string]ed25519.PublicKey
+	clock map[string]int64
+}
+
+// LastEvent is the EventClock method.
+func (m *MemoryKeyStore) LastEvent(customerID string) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.clock[customerID], nil
+}
+
+// SetLastEvent is the EventClock method.
+func (m *MemoryKeyStore) SetLastEvent(customerID string, created int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.clock == nil {
+		m.clock = map[string]int64{}
+	}
+	m.clock[customerID] = created
+	return nil
 }
 
 func (m *MemoryKeyStore) Get(customerID string) (ed25519.PublicKey, error) {
@@ -52,11 +93,16 @@ func (m *MemoryKeyStore) Get(customerID string) (ed25519.PublicKey, error) {
 func (m *MemoryKeyStore) Put(customerID string, key ed25519.PublicKey) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.set(customerID, key)
+	return nil
+}
+
+// set stores a copy of the key. The caller holds the lock.
+func (m *MemoryKeyStore) set(customerID string, key ed25519.PublicKey) {
 	if m.keys == nil {
 		m.keys = map[string]ed25519.PublicKey{}
 	}
 	m.keys[customerID] = append(ed25519.PublicKey(nil), key...)
-	return nil
 }
 
 // PutIfAbsent is the AtomicKeyStore method.
@@ -66,10 +112,7 @@ func (m *MemoryKeyStore) PutIfAbsent(customerID string, key ed25519.PublicKey) (
 	if _, ok := m.keys[customerID]; ok {
 		return false, nil
 	}
-	if m.keys == nil {
-		m.keys = map[string]ed25519.PublicKey{}
-	}
-	m.keys[customerID] = append(ed25519.PublicKey(nil), key...)
+	m.set(customerID, key)
 	return true, nil
 }
 
@@ -80,7 +123,70 @@ func (m *MemoryKeyStore) Delete(customerID string) error {
 	return nil
 }
 
-// Observe keeps the signing key that a verified webhook event names. Call it for every event, after webhook.ParseEvent. It acts on three types:
+// ObserveOptions says how ObserveEvent treats an event that erases a key.
+type ObserveOptions struct {
+	// ApproveReset is called before a customer.reset or customer.deleted event erases the kept key. Return true only if you started the reset or
+	// confirmed it with your own customer. The webhook is signed with a secret Custodian also holds, so the signature alone does not show that
+	// the reset is real. If it is nil, resets are refused. If it returns an error, that error is returned and the key stays.
+	ApproveReset func(customerID, eventType string) (bool, error)
+}
+
+// ObserveEvent is Observe with two more checks. Use it for every verified event.
+//
+// A customer.reset or customer.deleted event erases the kept key only if opts.ApproveReset says yes. Without that callback it returns
+// ErrResetNotApproved and the key stays. If the store is an EventClock, an event older than the last one handled for the customer returns
+// ErrStaleEvent and changes nothing, so a retried old event cannot pin an old key or erase a new one. Events with the same created second
+// cannot be put in order and are all handled. If the store is not an EventClock, the order check is skipped.
+func ObserveEvent(store KeyStore, event *webhook.Event, opts ObserveOptions) error {
+	if event == nil {
+		return ErrFormat
+	}
+	switch event.Type {
+	case eventCustomerEnrolled, eventCustomerReset, eventCustomerDeleted:
+	default:
+		return nil
+	}
+	var o struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(event.Data.Object, &o); err != nil || o.ID == "" {
+		return ErrFormat
+	}
+	clock, hasClock := store.(EventClock)
+	var last int64
+	if hasClock {
+		var err error
+		last, err = clock.LastEvent(o.ID)
+		if err != nil {
+			return err
+		}
+		if event.Created < last {
+			return ErrStaleEvent
+		}
+	}
+	if event.Type != eventCustomerEnrolled {
+		if opts.ApproveReset == nil {
+			return ErrResetNotApproved
+		}
+		ok, err := opts.ApproveReset(o.ID, event.Type)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return ErrResetNotApproved
+		}
+	}
+	if err := Observe(store, event.Type, event.Data.Object); err != nil {
+		return err
+	}
+	if hasClock && event.Created > last {
+		return clock.SetLastEvent(o.ID, event.Created)
+	}
+	return nil
+}
+
+// Observe keeps the signing key that a verified webhook event names. It trusts the vault: it asks no approval before a reset erases a key and
+// does not check the order of events. Use ObserveEvent instead. Call it for every event, after webhook.ParseEvent. It acts on three types:
 //
 //	customer.enrolled: keeps the key. If you already hold another key for the customer it returns ErrKeyChanged and keeps the old one.
 //	customer.reset, customer.deleted: forgets the key, so the next enrolment can set a new one.
@@ -90,7 +196,7 @@ func (m *MemoryKeyStore) Delete(customerID string) error {
 // the id of each handled event, as the webhook guide says.
 func Observe(store KeyStore, eventType string, object json.RawMessage) error {
 	switch eventType {
-	case "customer.enrolled":
+	case eventCustomerEnrolled:
 		var o struct {
 			ID           string `json:"id"`
 			VaultSignKey string `json:"vault_sign_key"`
@@ -103,7 +209,7 @@ func Observe(store KeyStore, eventType string, object json.RawMessage) error {
 			return ErrFormat
 		}
 		return pin(store, o.ID, key)
-	case "customer.reset", "customer.deleted":
+	case eventCustomerReset, eventCustomerDeleted:
 		var o struct {
 			ID string `json:"id"`
 		}

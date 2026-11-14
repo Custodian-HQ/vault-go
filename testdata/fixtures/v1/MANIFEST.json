@@ -1,23 +1,21 @@
 {
   "files": {
     "LICENSE-go.txt": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
-    "PROVENANCE.md": "3c06b58aba6bfc90ab40214ca636f149b7a20f1c31a648f8c3c6fb6bcb41cb2c",
+    "PROVENANCE.md": "01cf8170258cd96654391f93593052eb48f21e7e9d596a0bf26f08525eeffaea",
     "cbor.json": "247968a569f2b7f373b9ca22c521187e4bfb89615dda1930c69711557af44bbb",
-    "disclosure-envelope.json": "b12a762643f43db5b1da74ca7fe9f16069f35f2ebba45ba92a61c5c8ad3455cb",
+    "disclosure-envelope.json": "a55ee2602d58df106e337fd70d9f004385a75c9bffdfd3d55a049e2d39c19ec3",
     "disclosure-key-fingerprint.json": "f62393699c4e2b8b75b85b78c532edd4b660bbcba2271079cd3f32c8e5010910",
     "envelope.json": "3aa98474e878e95c8e90f50d8354d890277b8448a71f905e8ca35d0b3711584f",
     "field-padding.json": "d95190e4f5e9660ef04d85a2ca755ff8a718f71f7600c825b2c5dcf80b615510",
     "file-stream.json": "9a95be489f3812c44515c679bbce7ad601a96e74746c8117ea63a5fe0bb7a848",
-    "holder-wrap.json": "bd2cbe1ee884a3d50ec6b409779e1c11189934dbdb87d11a2921dd8a78393b1d",
     "hpke-xwing-aes256gcm-sample.json": "d3c8dcd5a2ccf022fb5b86eb236752378acad1b30f7cb8265ef26627b61f08b6",
     "hpke-xwing-vector.json": "8d58386a84810039f784bfe39d3038c64398366376dd0425faf90299bedec30a",
     "kdf.json": "6dee9efc628ecf8e0240f0276d1910a6facac7b92f423fc8a4b77d54b90a6704",
-    "keyring.json": "a476ce4ec075041cdf00a74cb94982c984dd7b7dfb96a0456b10736d306febd3",
+    "keyring.json": "2996546986148416cc6678325028e71d5884cd8fcb7aea5b8f3c2f1875ac7f51",
     "pedersen-h.json": "090dbec3c60485016fecb4cd70bbf68acdd99c036b55eca7a87e191f7983a9ff",
     "pedersen.json": "79994423b690acff06e79b4a733b4d678e5d372f03a36abdda50697d52bfeca0",
     "secret-normalization.json": "d1be485105d0fef1376cdcfe0fac1d2a273da1edae112b74499730e0d92b2296",
-    "share-envelope.json": "e8c069daf4f2e0d9785e551444b2e7dbc9fefea10695ee67fd04697be4fcbdae",
-    "sign.json": "36abdeb32a5433150f0e81cdf7859b28a5b767d1e80f335f29e1fd72f687b2ae",
+    "sign.json": "75a38191c124a06b343e2f9f875810af51b3eb685b8a3b8b6fef34092d83ce76",
     "webhook-signature.json": "376ce5a6d39d77e14d41733d7e224699c9d973aa011449eaa8f38c1fcf1de0bb",
     "zstd-records.json": "b6e9c851049bd8de856dcdbe4445fee941806652e63403fa0ebe12d48df3afce"
   }

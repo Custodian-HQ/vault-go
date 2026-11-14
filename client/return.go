@@ -38,7 +38,7 @@ func ParseReturn(returnURL, expectedState string) (sessionID string, err error) 
 var ErrBadFingerprint = errors.New("custodian: the fingerprint must be 64 hexadecimal characters")
 
 // ApproveURL adds your disclosure key's fingerprint to the link of an approve session, in the fragment, so that it never reaches the vault's
-// server. Take the fingerprint from your own app configuration (disclosure.Fingerprint of your key), not from the vault: the hosted page
+// server. Take the fingerprint from your own app configuration (disclosure.Fingerprint of your key), not from the vault: the vault page
 // compares it with the key the vault gives it, and stops the request if they differ. That check is what tells the customer the request is yours.
 func ApproveURL(sessionURL, fingerprint string) (string, error) {
 	if len(fingerprint) != 64 {
@@ -53,5 +53,12 @@ func ApproveURL(sessionURL, fingerprint string) (string, error) {
 	if err != nil || u.Fragment == "" || !(u.Scheme == "https" || u.Scheme == "http" && u.Hostname() == "localhost") {
 		return "", ErrBadReturn
 	}
-	return sessionURL + "&fp=" + strings.ToLower(fingerprint), nil
+	base, _, _ := strings.Cut(sessionURL, "#")
+	var kept []string
+	for _, part := range strings.Split(u.EscapedFragment(), "&") {
+		if key, _, _ := strings.Cut(part, "="); key != "fp" && part != "" {
+			kept = append(kept, part)
+		}
+	}
+	return base + "#" + strings.Join(append(kept, "fp="+strings.ToLower(fingerprint)), "&"), nil
 }

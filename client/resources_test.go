@@ -95,8 +95,6 @@ func TestEverySDKMethodMatchesTheSpecAndTheSpecIsFullyCovered(t *testing.T) {
 	chk(c.GetTemplate(ctx, "kyc"))
 	chk(c.ReplaceTemplate(ctx, "kyc", []Key{{Name: "b"}}))
 	chk(nil, c.DeleteTemplate(ctx, "kyc"))
-	chk(c.GetRecoveryPolicy(ctx))
-	chk(c.SetRecoveryPolicy(ctx, 3))
 	chk(c.ListWebhookEndpoints(ctx))
 	chk(c.ListWebhookDeliveries(ctx, ListDeliveriesParams{Endpoint: "we_1", Limit: 5, StartingAfter: 9}))
 	chk(nil, c.RetryWebhookDelivery(ctx, 7))

@@ -77,10 +77,6 @@ func TestMethodsSendTheBodiesAndQueriesOfTheSpec(t *testing.T) {
 			_, err := c.ReplaceTemplate(ctx, "kyc", []Key{{Name: "b", Type: "file"}})
 			return err
 		}, "PUT", "/templates/kyc", "", `{"keys":[{"name":"b","type":"file"}]}`, false},
-		{"SetRecoveryPolicy", 200, `{}`, func(c *Client) error {
-			_, err := c.SetRecoveryPolicy(ctx, 3)
-			return err
-		}, "PUT", "/recovery-policy", "", `{"recovery_threshold":3}`, false},
 		{"GetUsage with a period", 200, `{}`, func(c *Client) error {
 			_, err := c.GetUsage(ctx, from, to)
 			return err

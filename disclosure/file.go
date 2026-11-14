@@ -20,6 +20,8 @@ var (
 	ErrFileOpen       = errors.New("disclosure: the file was changed, or it is not the file for this name and record")
 	// ErrFileTruncated means the encrypted file ended early. A download that was cut short gives it.
 	ErrFileTruncated = errors.New("disclosure: the encrypted file ended early")
+	// ErrFileTooLong means the stream has more chunks than the wire format allows (2^32-1).
+	ErrFileTooLong = errors.New("disclosure: the encrypted file has too many chunks")
 	// ErrFileRecords and ErrFileFrame mean the compressed content of the file is not well formed.
 	ErrFileRecords = errors.New("disclosure: the compressed file is not a zstd record list")
 	ErrFileFrame   = errors.New("disclosure: a zstd frame of the file is refused")
@@ -232,7 +234,7 @@ func (s *chunkReader) nonce(last bool) []byte {
 
 func (s *chunkReader) next() error {
 	if s.counter >= fileMaxChunks {
-		return ErrFileOpen
+		return ErrFileTooLong
 	}
 	n, err := io.ReadFull(s.in, s.sealed)
 	last := false

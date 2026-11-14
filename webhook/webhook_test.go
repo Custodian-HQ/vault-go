@@ -62,54 +62,6 @@ func TestParseEventReadsTheEventOnlyAfterTheSignatureChecks(t *testing.T) {
 	}
 }
 
-func TestRecoveryStatusChangedReadsItsObjectAndRefusesOtherEvents(t *testing.T) {
-	var event Event
-	body := `{"id":"evt_1","type":"customer.recovery_status_changed","created":1700000000,"livemode":true,"data":{"object":{"customer":"cus_1","livemode":true,"status":"off","reason":"device_lost","holders":2,"threshold":2,"changed_at":"2026-10-27T18:24:57Z"}}}`
-	if err := json.Unmarshal([]byte(body), &event); err != nil {
-		t.Fatal(err)
-	}
-	got, err := event.RecoveryStatusChanged()
-	if err != nil || got.Status != "off" || got.Reason != "device_lost" || got.Holders != 2 || got.Threshold != 2 || got.Customer != "cus_1" {
-		t.Fatalf("got %+v, %v", got, err)
-	}
-	event.Type = "session.completed"
-	if _, err := event.RecoveryStatusChanged(); err == nil {
-		t.Error("another event type must be refused")
-	}
-}
-
-func TestRecoveryActionRequiredReadsItsObjectAndRefusesOtherEvents(t *testing.T) {
-	var event Event
-	body := `{"id":"evt_2","type":"recovery.action_required","created":1700000000,"livemode":true,"data":{"object":{"customer":"cus_1","livemode":true,"holder":"h_1","holder_type":"contact","reason":"holder_added","requested_at":"2026-10-27T18:24:57Z"}}}`
-	if err := json.Unmarshal([]byte(body), &event); err != nil {
-		t.Fatal(err)
-	}
-	got, err := event.RecoveryActionRequired()
-	if err != nil || got.Holder != "h_1" || got.HolderType != "contact" || got.Reason != "holder_added" || got.Customer != "cus_1" {
-		t.Fatalf("got %+v, %v", got, err)
-	}
-	event.Type = "customer.recovery_status_changed"
-	if _, err := event.RecoveryActionRequired(); err == nil {
-		t.Error("another event type must be refused")
-	}
-}
-
-func TestRecoveryHolderDeclinedReadsItsObjectAndRefusesOtherEvents(t *testing.T) {
-	var event Event
-	body := `{"id":"evt_3","type":"recovery.holder_declined","created":1700000000,"livemode":true,"data":{"object":{"customer":"cus_1","livemode":true,"holder":"h_1","holder_type":"contact","recovery":"r_1","declined_at":"2026-10-27T18:24:57Z"}}}`
-	if err := json.Unmarshal([]byte(body), &event); err != nil {
-		t.Fatal(err)
-	}
-	got, err := event.RecoveryHolderDeclined()
-	if err != nil || got.Holder != "h_1" || got.Recovery != "r_1" || got.Customer != "cus_1" || got.DeclinedAt == "" {
-		t.Fatalf("got %+v, %v", got, err)
-	}
-	event.Type = "recovery.action_required"
-	if _, err := event.RecoveryHolderDeclined(); err == nil {
-		t.Error("another event type must be refused")
-	}
-}
-
 func TestCustomerSignInLimitReachedReadsItsObjectAndRefusesOtherEvents(t *testing.T) {
 	var event Event
 	body := `{"id":"evt_4","type":"customer.sign_in_limit_reached","created":1700000000,"livemode":true,"data":{"object":{"customer":"cus_1","livemode":true,"brake":"keyring_read","limit":10,"reached_at":"2026-10-29T10:00:00Z"}}}`
@@ -120,7 +72,7 @@ func TestCustomerSignInLimitReachedReadsItsObjectAndRefusesOtherEvents(t *testin
 	if err != nil || got.Customer != "cus_1" || got.Brake != "keyring_read" || got.Limit != 10 || got.ReachedAt == "" {
 		t.Fatalf("got %+v, %v", got, err)
 	}
-	event.Type = "recovery.action_required"
+	event.Type = "session.completed"
 	if _, err := event.CustomerSignInLimitReached(); err == nil {
 		t.Error("another event type must be refused")
 	}
@@ -203,5 +155,16 @@ func TestTheToleranceIsTheOneYouGiveAndZeroMeansTheDefault(t *testing.T) {
 		if c.want == nil && err != nil || c.want != nil && !errors.Is(err, c.want) {
 			t.Errorf("%s (ParseEvent): want %v, got %v", c.name, c.want, err)
 		}
+	}
+}
+
+func TestVerifyRefusesAnEmptySecret(t *testing.T) {
+	body := []byte(`{"id":"evt_1"}`)
+	mac := hmac.New(sha256.New, nil)
+	mac.Write([]byte("1700000000."))
+	mac.Write(body)
+	header := "t=1700000000,v1=" + hex.EncodeToString(mac.Sum(nil))
+	if err := Verify("", header, body, 0, time.Unix(1700000000, 0)); !errors.Is(err, ErrNoSecret) {
+		t.Fatalf("an empty secret must be refused, got %v", err)
 	}
 }

@@ -386,3 +386,16 @@ func TestAReadErrorOfTheDownloadIsNotHiddenAsAChangedFile(t *testing.T) {
 		t.Errorf("got %v", err)
 	}
 }
+
+func TestAFileWithTooManyChunksIsRefused(t *testing.T) {
+	key := bytes.Repeat([]byte{0x42}, 32)
+	stream := seal(t, key, fileKeyID, fixtureContext, fixtureFileID, 0, fileMinChunk, bytes.Repeat([]byte{7}, fileSaltSize), bytes.Repeat([]byte{9}, filePrefixSize), seeded("long", 3*fileMinChunk))
+	r, err := OpenFile(File{FileID: fixtureFileID, Key: key}, bytes.NewReader(stream), fixtureContext)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.(*fileReader).chunks.counter = fileMaxChunks
+	if _, err := io.ReadAll(r); !errors.Is(err, ErrFileTooLong) {
+		t.Fatalf("want ErrFileTooLong, got %v", err)
+	}
+}

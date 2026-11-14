@@ -31,7 +31,8 @@ func sealed(t *testing.T, tamper func(enc, commit, ct *[]byte)) ([]byte, Expecte
 
 	names := append([]string{}, want.Keys...)
 	sort.Strings(names)
-	info := append(append(append([]byte(infoLabel), 0), want.BusinessID...), append([]byte{0}, want.RequestID...)...)
+	rk := Fingerprint(suite, public)
+	info := append(append(append([]byte(infoLabel), 0), want.BusinessID...), append(append([]byte{0}, want.RequestID...), append([]byte{0}, rk...)...)...)
 	kem, _ := kemFor(suite)
 	pub, err := kem.NewPublicKey(public)
 	if err != nil {
@@ -59,7 +60,7 @@ func sealed(t *testing.T, tamper func(enc, commit, ct *[]byte)) ([]byte, Expecte
 
 	statement := encodeMap([]pair{
 		{text("v"), uint_(envelopeVersion)}, {text("suite"), text(suite)}, {text("request_id"), text(want.RequestID)}, {text("business_id"), text(want.BusinessID)},
-		{text("customer_id"), text(want.CustomerID)}, {text("kid"), text(want.KID)}, {text("enc"), bstr(enc)}, {text("commit"), bstr(commit)}, {text("ct"), bstr(ct)},
+		{text("customer_id"), text(want.CustomerID)}, {text("kid"), text(want.KID)}, {text("rk"), text(rk)}, {text("enc"), bstr(enc)}, {text("commit"), bstr(commit)}, {text("ct"), bstr(ct)},
 	})
 	sig := ed25519.Sign(signPrivate, append(append([]byte(signatureLabel), 0), statement...))
 	b64 := base64.RawURLEncoding.EncodeToString

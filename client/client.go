@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -25,18 +26,38 @@ const maxErrorBody = 64 << 10
 // DefaultBaseURL is the vault API, with its version.
 const DefaultBaseURL = "https://api.thecustodian.io/vault/v1"
 
+const (
+	defaultTimeout       = 30 * time.Second
+	maxRedirects         = 10
+	headerAuthorization  = "Authorization"
+	headerIdempotencyKey = "Idempotency-Key"
+	// errorTypeAPI is the Type of an APIError that the library makes itself.
+	errorTypeAPI     = "api_error"
+	codeFileReplaced = "file_replaced"
+)
+
 // Client sends requests to the API for one API key. It does not change after New, so one client can serve many goroutines.
 type Client struct {
-	baseURL string
-	apiKey  string
-	http    *http.Client
+	baseURL   string
+	apiKey    string
+	http      *http.Client
+	allowHTTP bool
 }
+
+// String hides the API key, so printing a Client (for example with %+v) does not leak it.
+func (c Client) String() string { return "custodian.Client{baseURL: " + c.baseURL + "}" }
+
+// GoString does the same for %#v.
+func (c Client) GoString() string { return c.String() }
 
 // Option changes how New makes a client.
 type Option func(*Client)
 
 // WithBaseURL points the client at another server, such as a test server.
 func WithBaseURL(u string) Option { return func(c *Client) { c.baseURL = strings.TrimRight(u, "/") } }
+
+// WithInsecureHTTP lets the base URL use plain http for a host that is not local. The API key then travels in clear text: use it only on a trusted network.
+func WithInsecureHTTP() Option { return func(c *Client) { c.allowHTTP = true } }
 
 // WithHTTPClient replaces the HTTP client. New copies it, so later changes to h are not seen. If h has its own CheckRedirect,
 // the library does not guard redirects: that function must keep the API key from other servers.
@@ -47,12 +68,15 @@ func New(apiKey string, opts ...Option) (*Client, error) {
 	if strings.TrimSpace(apiKey) == "" {
 		return nil, errors.New("custodian: an API key is required")
 	}
-	c := &Client{baseURL: DefaultBaseURL, apiKey: apiKey, http: &http.Client{Timeout: 30 * time.Second}}
+	c := &Client{baseURL: DefaultBaseURL, apiKey: apiKey, http: &http.Client{Timeout: defaultTimeout}}
 	for _, opt := range opts {
 		opt(c)
 	}
 	if c.http == nil {
 		return nil, errors.New("custodian: the HTTP client must not be nil")
+	}
+	if err := c.checkBaseURL(); err != nil {
+		return nil, err
 	}
 	if c.http.CheckRedirect == nil {
 		h := *c.http
@@ -62,15 +86,31 @@ func New(apiKey string, opts ...Option) (*Client, error) {
 	return c, nil
 }
 
-// dropKeyOnOtherOrigin keeps the API key from going to a server other than the one first asked. Go compares host names only, so
-// without this a redirect to another port would carry the key.
+func (c *Client) checkBaseURL() error {
+	u, err := url.Parse(c.baseURL)
+	if err != nil || u.Host == "" {
+		return errors.New("custodian: the base URL is not valid")
+	}
+	switch {
+	case u.Scheme == "https":
+		return nil
+	case u.Scheme == "http" && (c.allowHTTP || isLocalHost(u.Hostname())):
+		return nil
+	}
+	return errors.New("custodian: the base URL must use https (plain http is only for localhost, or with WithInsecureHTTP)")
+}
+
+func isLocalHost(h string) bool { return h == "localhost" || h == "127.0.0.1" || h == "::1" }
+
+// dropKeyOnOtherOrigin refuses a redirect to another origin, so neither the API key nor a replayed POST body (307 or 308) can reach another
+// server. Go compares host names only, so the scheme and the port are compared here too.
 func dropKeyOnOtherOrigin(req *http.Request, via []*http.Request) error {
-	if len(via) >= 10 {
-		return errors.New("custodian: stopped after 10 redirects")
+	if len(via) >= maxRedirects {
+		return fmt.Errorf("custodian: stopped after %d redirects", maxRedirects)
 	}
 	first := via[0].URL
 	if req.URL.Scheme != first.Scheme || req.URL.Host != first.Host {
-		req.Header.Del("Authorization")
+		return errors.New("custodian: the API answered with a redirect to another origin; it was not followed")
 	}
 	return nil
 }
@@ -96,7 +136,7 @@ var ErrFileReplaced = errors.New("custodian: the customer replaced or removed th
 
 // Is lets errors.Is match the sentinel errors of the package.
 func (e *APIError) Is(target error) bool {
-	return target == ErrFileReplaced && e.Status == http.StatusGone && e.Code == "file_replaced"
+	return target == ErrFileReplaced && e.Status == http.StatusGone && e.Code == codeFileReplaced
 }
 
 // Do sends a request. body and out may be nil. A POST gets an Idempotency-Key, so a retry cannot repeat the action;
@@ -123,18 +163,34 @@ func (c *Client) Do(ctx context.Context, method, path string, body, out any, opt
 		return err
 	}
 	if int64(len(payload)) > maxResponse {
-		return &APIError{Status: resp.StatusCode, Type: "api_error", Code: "response_too_large", Message: "the answer is larger than the library reads"}
+		return &APIError{Status: resp.StatusCode, Type: errorTypeAPI, Code: "response_too_large", Message: "the answer is larger than the library reads"}
 	}
 	if out == nil || len(payload) == 0 {
 		return nil
 	}
 	if !json.Valid(payload) {
-		return &APIError{Status: resp.StatusCode, Type: "api_error", Code: "unparsed_response", Message: "the answer is not JSON"}
+		return &APIError{Status: resp.StatusCode, Type: errorTypeAPI, Code: "unparsed_response", Message: "the answer is not JSON"}
 	}
 	return json.Unmarshal(payload, out)
 }
 
+// ErrBadID means an id or name for a path is empty, ".", or "..". No real id looks like these, and they would change which endpoint runs.
+var ErrBadID = errors.New("custodian: an id or name must not be empty, \".\" or \"..\"")
+
+// badSegment marks a path that pathSegment refused. newRequest turns it into ErrBadID before anything is sent.
+const badSegment = "\x00bad-id"
+
+func pathSegment(s string) string {
+	if s == "" || s == "." || s == ".." {
+		return badSegment
+	}
+	return url.PathEscape(s)
+}
+
 func (c *Client) newRequest(ctx context.Context, method, path string, body any, opts []RequestOption) (*http.Request, error) {
+	if strings.Contains(path, badSegment) {
+		return nil, ErrBadID
+	}
 	var reader io.Reader
 	if body != nil {
 		raw, err := json.Marshal(body)
@@ -147,7 +203,7 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body any, 
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set(headerAuthorization, "Bearer "+c.apiKey)
 	req.Header.Set("Accept", "application/json")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
@@ -157,7 +213,7 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body any, 
 		if err != nil {
 			return nil, err
 		}
-		req.Header.Set("Idempotency-Key", key)
+		req.Header.Set(headerIdempotencyKey, key)
 	}
 	for _, opt := range opts {
 		opt(req)
@@ -216,7 +272,7 @@ func (c *Client) stream(ctx context.Context, path string, header http.Header, ok
 		return nil, err
 	}
 	if resp.StatusCode < 300 {
-		return nil, &APIError{Status: resp.StatusCode, Type: "api_error", Code: "unexpected_status", Message: "the answer is not the one asked for"}
+		return nil, &APIError{Status: resp.StatusCode, Type: errorTypeAPI, Code: "unexpected_status", Message: "the answer is not the one asked for"}
 	}
 	return nil, parseError(resp.StatusCode, payload)
 }
@@ -246,7 +302,7 @@ type RequestOption func(*http.Request)
 
 // WithIdempotencyKey sets the key yourself.
 func WithIdempotencyKey(key string) RequestOption {
-	return func(r *http.Request) { r.Header.Set("Idempotency-Key", key) }
+	return func(r *http.Request) { r.Header.Set(headerIdempotencyKey, key) }
 }
 
 func parseError(status int, payload []byte) error {
@@ -254,10 +310,20 @@ func parseError(status int, payload []byte) error {
 		Error APIError `json:"error"`
 	}
 	if err := json.Unmarshal(payload, &body); err != nil || body.Error.Code == "" {
-		return &APIError{Status: status, Type: "api_error", Code: "unparsed_error", Message: strings.TrimSpace(string(payload))}
+		return &APIError{Status: status, Type: errorTypeAPI, Code: "unparsed_error", Message: truncate(strings.TrimSpace(string(payload)), maxRawMessage)}
 	}
 	body.Error.Status = status
 	return &body.Error
+}
+
+// maxRawMessage is how much of a non-JSON error answer goes into APIError.Message, which callers often log.
+const maxRawMessage = 200
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return strings.ToValidUTF8(s[:n], "") + "..."
 }
 
 func newIdempotencyKey() (string, error) {

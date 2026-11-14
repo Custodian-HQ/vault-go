@@ -148,8 +148,15 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 	// The same event can arrive more than once: ignore an event.ID you already handled.
 
 	// Keeps the customer's signing key from "customer.enrolled".
-	if err := disclosure.Observe(store, event.Type, event.Data.Object); err != nil {
-		log.Println("signing key problem:", err) // disclosure.ErrKeyChanged means an attack
+	err = disclosure.ObserveEvent(store, event, disclosure.ObserveOptions{
+		// Say yes only if you started this reset or confirmed it with your own customer.
+		ApproveReset: func(customerID, eventType string) (bool, error) { return resetIsExpected(customerID), nil },
+	})
+	switch {
+	case errors.Is(err, disclosure.ErrStaleEvent):
+		// An old event that came late. Nothing changed. Acknowledge it.
+	case err != nil:
+		log.Println("signing key problem:", err) // disclosure.ErrKeyChanged and ErrResetNotApproved mean look closely
 		http.Error(w, "key problem", http.StatusInternalServerError)
 		return
 	}
@@ -159,9 +166,16 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-**Why `Observe` matters.** When a customer enrols, the event holds their **signing key**. Keep it.
+**Why `ObserveEvent` matters.** When a customer enrols, the event holds their **signing key**. Keep it.
 Later you use it to prove that data really came from this customer.
-If a later event names a different key, `Observe` returns `disclosure.ErrKeyChanged`. Treat that as an attack.
+If a later event names a different key, `ObserveEvent` returns `disclosure.ErrKeyChanged`. Treat that as an attack.
+
+Webhooks are signed by Custodian with a secret that Custodian also holds. So a valid signature does not prove that a `customer.reset` is real.
+That is why a reset erases the key only when your `ApproveReset` callback says yes. Without the callback, `ObserveEvent` refuses every reset
+(`disclosure.ErrResetNotApproved`) and keeps the key. Approve a reset only when you started it or confirmed it with your own customer.
+If your store is also a `disclosure.EventClock` (`LastEvent` and `SetLastEvent`), an event older than one already handled returns
+`disclosure.ErrStaleEvent`: a retried old event cannot pin an old key or erase a new one. The older `Observe` function trusts the vault: it asks
+for no approval and does not check the order of events.
 
 If you keep the keys in a database, make your store an `disclosure.AtomicKeyStore`: add `PutIfAbsent(customerID, key) (stored bool, err error)`,
 one insert that does nothing when a key is there. Then two events handled at the same time for one customer cannot both keep a key.
@@ -177,10 +191,9 @@ You start every visit the same way as in step 3. Only the purpose changes.
 | `client.PurposeEntry` | Let the customer add data. Give a `Template` or `Keys`. |
 | `client.PurposeView` | Let the customer see a record. Give the `Record` token. |
 | `client.PurposeApprove` | Let the customer approve a disclosure request. Give the `Disclosure` id. See step 7. |
-| `client.PurposeRecover`, `client.PurposeRecoverySettings` | Recovery with trusted people or devices, and its settings |
+| `client.PurposeRecoverySettings` | Let the customer change their secret (new secret and new master key) |
 | `client.PurposeReset` | Start a reset |
 | `client.PurposeDelete` | Let the customer delete their own data |
-| `client.PurposeHolder` | Let the customer's second device act as a recovery holder |
 
 `client.Purposes()` lists them all. `purpose.Valid()` tells you whether this library knows a purpose.
 A newer API can send one that the library does not know yet.
@@ -265,7 +278,9 @@ Use `errors.Is` to see which check failed.
 |---|---|
 | `disclosure.ErrNoKey` | You hold no signing key for this customer. Check that your webhook saw `customer.enrolled`. |
 | `disclosure.ErrKeyChanged` | An event names a different key than the one you kept. Treat it as an attack. |
-| `disclosure.ErrSignature` | The customer's key did not sign this envelope. |
+| `disclosure.ErrResetNotApproved` | A `customer.reset` or `customer.deleted` event did not erase the key, because `ApproveReset` is not set or said no. |
+| `disclosure.ErrStaleEvent` | The event is older than one already handled for this customer. Nothing changed. Acknowledge it. |
+| `disclosure.ErrSignature` | The customer's key did not sign this envelope, or the envelope was sealed to a key that is not your disclosure key. |
 | `ErrRequest`, `ErrBusiness`, `ErrCustomer`, `ErrKey` | The envelope is for something else than you asked. |
 | `ErrFormat`, `ErrPayload`, `ErrCommitment` | The envelope is damaged, or its content is not what the customer approved. |
 
@@ -311,7 +326,7 @@ _, err = c.AckDisclosure(ctx, request.ID)
 - The download works only while the envelope exists: until you acknowledge it, or 15 minutes after the customer approves.
 - A file key opens that one file only. The customer cannot take it back, so use the file, then discard the key. Do not store it.
 - Read the file to the end before you keep it. A file that was cut short or changed fails, sometimes only at the end
-  (`disclosure.ErrFileTruncated`, `ErrFileOpen`). A file that was sealed to another key fails at once (`ErrFileCommitment`).
+  (`disclosure.ErrFileTruncated`, `ErrFileOpen`, `ErrFileTooLong`). A file that was sealed to another key fails at once (`ErrFileCommitment`).
 - The library does not limit how large the file grows when it is decompressed. A small upload can become very large. Bound what you
   write, and do not use the file if it goes over:
 

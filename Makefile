@@ -1,6 +1,6 @@
 # One entry point: `make check` runs everything CI runs.
 export GOWORK := off
-export GOTOOLCHAIN := go1.27.3
+export GOTOOLCHAIN := go1.27.4
 
 .PHONY: check fmt-check vet test
 

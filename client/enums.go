@@ -21,18 +21,16 @@ const (
 	PurposeEntry            Purpose = "entry"
 	PurposeView             Purpose = "view"
 	PurposeApprove          Purpose = "approve"
-	PurposeRecover          Purpose = "recover"
 	PurposeRecoverySettings Purpose = "recovery_settings"
 	PurposeReset            Purpose = "reset"
 	PurposeDelete           Purpose = "delete"
-	PurposeHolder           Purpose = "holder"
 )
 
 // Purposes lists every purpose a business can start.
 func Purposes() []Purpose {
 	return []Purpose{
-		PurposeEnrol, PurposeEntry, PurposeView, PurposeApprove, PurposeRecover,
-		PurposeRecoverySettings, PurposeReset, PurposeDelete, PurposeHolder,
+		PurposeEnrol, PurposeEntry, PurposeView, PurposeApprove,
+		PurposeRecoverySettings, PurposeReset, PurposeDelete,
 	}
 }
 

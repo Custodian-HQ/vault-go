@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -72,7 +73,7 @@ func TestAnEmptyKeyIsRefused(t *testing.T) {
 	}
 }
 
-func TestTheKeyDoesNotFollowARedirectToAnotherOrigin(t *testing.T) {
+func TestARedirectToAnotherOriginIsRefused(t *testing.T) {
 	var elsewhere, sameOriginSecond string
 	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		elsewhere = r.Header.Get("Authorization")
@@ -99,11 +100,11 @@ func TestTheKeyDoesNotFollowARedirectToAnotherOrigin(t *testing.T) {
 		"a client with a Timeout": mustClient(t, home.URL, WithHTTPClient(&http.Client{Timeout: time.Minute})),
 	} {
 		elsewhere = "unset"
-		if err := c.Do(context.Background(), http.MethodGet, "/away", nil, nil); err != nil {
-			t.Fatalf("%s: %v", name, err)
+		if err := c.Do(context.Background(), http.MethodPost, "/away", map[string]string{"a": "b"}, nil); err == nil {
+			t.Fatalf("%s: a redirect to another origin must be refused", name)
 		}
-		if elsewhere != "" {
-			t.Errorf("%s: the key went to another origin: %q", name, elsewhere)
+		if elsewhere != "unset" {
+			t.Errorf("%s: the request went to another origin: %q", name, elsewhere)
 		}
 	}
 
@@ -207,7 +208,7 @@ func TestAnErrorBodyIsReadOnlyInPart(t *testing.T) {
 	defer server.Close()
 	var apiErr *APIError
 	err := mustClient(t, server.URL).Do(context.Background(), http.MethodGet, "/x", nil, nil)
-	if !errors.As(err, &apiErr) || apiErr.Status != 502 || len(apiErr.Message) != maxErrorBody {
+	if !errors.As(err, &apiErr) || apiErr.Status != 502 || len(apiErr.Message) != maxRawMessage+3 {
 		t.Errorf("a long error body: %v", err)
 	}
 }
@@ -317,5 +318,46 @@ func TestAnAnswerThatComesAfterTheTimerRanIsATimeout(t *testing.T) {
 	}
 	if !closed {
 		t.Error("the late answer's body was not closed")
+	}
+}
+
+func TestClientDoesNotPrintItsAPIKey(t *testing.T) {
+	c, err := New("sk_live_secretvalue")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, out := range []string{fmt.Sprintf("%v", c), fmt.Sprintf("%+v", c), fmt.Sprintf("%#v", c), fmt.Sprintf("%+v", *c)} {
+		if strings.Contains(out, "secretvalue") {
+			t.Fatalf("the API key was printed: %s", out)
+		}
+	}
+}
+
+func TestAnIdThatChangesThePathIsRefused(t *testing.T) {
+	var hit bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { hit = true }))
+	defer server.Close()
+	c := mustClient(t, server.URL)
+	for _, id := range []string{"", ".", ".."} {
+		if _, err := c.GetCustomer(context.Background(), id); !errors.Is(err, ErrBadID) {
+			t.Errorf("id %q: %v", id, err)
+		}
+	}
+	if hit {
+		t.Error("a request was sent for a bad id")
+	}
+}
+
+func TestPlainHTTPNeedsALocalHostOrAnOption(t *testing.T) {
+	if _, err := New("k", WithBaseURL("http://api.example.com/vault/v1")); err == nil {
+		t.Error("plain http to a remote host must be refused")
+	}
+	if _, err := New("k", WithBaseURL("http://api.example.com/vault/v1"), WithInsecureHTTP()); err != nil {
+		t.Errorf("the option must allow it: %v", err)
+	}
+	for _, u := range []string{"http://localhost:8080", "http://127.0.0.1:1", "http://[::1]:1", "https://api.example.com"} {
+		if _, err := New("k", WithBaseURL(u)); err != nil {
+			t.Errorf("%s: %v", u, err)
+		}
 	}
 }

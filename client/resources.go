@@ -29,8 +29,24 @@ func query(values url.Values) string {
 }
 
 func addInt(values url.Values, key string, n int) {
+	addInt64(values, key, int64(n))
+}
+
+func addInt64(values url.Values, key string, n int64) {
 	if n > 0 {
-		values.Set(key, strconv.Itoa(n))
+		values.Set(key, strconv.FormatInt(n, 10))
+	}
+}
+
+func addString(values url.Values, key, value string) {
+	if value != "" {
+		values.Set(key, value)
+	}
+}
+
+func addTime(values url.Values, key string, t time.Time) {
+	if !t.IsZero() {
+		values.Set(key, t.UTC().Format(time.RFC3339Nano))
 	}
 }
 
@@ -117,32 +133,26 @@ func (c *Client) CreateCustomerNamed(ctx context.Context, externalRef, firstName
 }
 
 func (c *Client) GetCustomer(ctx context.Context, id string) (*Customer, error) {
-	return call[Customer](ctx, c, http.MethodGet, "/customers/"+url.PathEscape(id), nil)
+	return call[Customer](ctx, c, http.MethodGet, "/customers/"+pathSegment(id), nil)
 }
 
 // DeleteCustomer deletes the customer and all their data at once. It cannot be undone, and the customer is not asked.
 func (c *Client) DeleteCustomer(ctx context.Context, id string) error {
-	return c.Do(ctx, http.MethodDelete, "/customers/"+url.PathEscape(id), nil, nil)
+	return c.Do(ctx, http.MethodDelete, "/customers/"+pathSegment(id), nil, nil)
 }
 
 // ResetCustomer starts a reset of a customer who has lost every way in. Nothing is deleted until the customer confirms on the page at the
 // URL in the answer. Then all their data is deleted for good, and they enrol again.
 func (c *Client) ResetCustomer(ctx context.Context, id, returnURL, state string, opts ...RequestOption) (*Session, error) {
-	return call[Session](ctx, c, http.MethodPost, "/customers/"+url.PathEscape(id)+"/reset", map[string]string{"return_url": returnURL, "state": state}, opts...)
+	return call[Session](ctx, c, http.MethodPost, "/customers/"+pathSegment(id)+"/reset", map[string]string{"return_url": returnURL, "state": state}, opts...)
 }
 
 func (c *Client) ListCustomers(ctx context.Context, p ListCustomersParams) (*CustomerPage, error) {
 	values := url.Values{}
 	addInt(values, "limit", p.Limit)
-	if p.StartingAfter != "" {
-		values.Set("starting_after", p.StartingAfter)
-	}
-	if p.ExternalRef != "" {
-		values.Set("external_ref", p.ExternalRef)
-	}
-	if p.State != "" {
-		values.Set("state", string(p.State))
-	}
+	addString(values, "starting_after", p.StartingAfter)
+	addString(values, "external_ref", p.ExternalRef)
+	addString(values, "state", string(p.State))
 	return call[CustomerPage](ctx, c, http.MethodGet, "/customers"+query(values), nil)
 }
 
@@ -202,7 +212,7 @@ func (c *Client) CreateSession(ctx context.Context, p CreateSessionParams, opts 
 // GetSession reads where a visit stands. Use it, or a webhook, to learn the result after the customer returns: never trust the
 // address they come back to.
 func (c *Client) GetSession(ctx context.Context, id string) (*Session, error) {
-	return call[Session](ctx, c, http.MethodGet, "/sessions/"+url.PathEscape(id), nil)
+	return call[Session](ctx, c, http.MethodGet, "/sessions/"+pathSegment(id), nil)
 }
 
 // Template is a named list of keys.
@@ -227,30 +237,16 @@ func (c *Client) CreateTemplate(ctx context.Context, t Template) (*Template, err
 }
 
 func (c *Client) GetTemplate(ctx context.Context, name string) (*Template, error) {
-	return call[Template](ctx, c, http.MethodGet, "/templates/"+url.PathEscape(name), nil)
+	return call[Template](ctx, c, http.MethodGet, "/templates/"+pathSegment(name), nil)
 }
 
 // ReplaceTemplate replaces all keys of an existing template. Sessions already made keep the keys they were made with.
 func (c *Client) ReplaceTemplate(ctx context.Context, name string, keys []Key) (*Template, error) {
-	return call[Template](ctx, c, http.MethodPut, "/templates/"+url.PathEscape(name), map[string]any{"keys": keys})
+	return call[Template](ctx, c, http.MethodPut, "/templates/"+pathSegment(name), map[string]any{"keys": keys})
 }
 
 func (c *Client) DeleteTemplate(ctx context.Context, name string) error {
-	return c.Do(ctx, http.MethodDelete, "/templates/"+url.PathEscape(name), nil, nil)
-}
-
-// RecoveryPolicy is how many holders are needed to recover a customer's vault.
-type RecoveryPolicy struct {
-	RecoveryThreshold int `json:"recovery_threshold"`
-}
-
-func (c *Client) GetRecoveryPolicy(ctx context.Context) (*RecoveryPolicy, error) {
-	return call[RecoveryPolicy](ctx, c, http.MethodGet, "/recovery-policy", nil)
-}
-
-// SetRecoveryPolicy sets how many holders are needed to recover a customer's vault. The threshold must be between 2 and 10.
-func (c *Client) SetRecoveryPolicy(ctx context.Context, threshold int) (*RecoveryPolicy, error) {
-	return call[RecoveryPolicy](ctx, c, http.MethodPut, "/recovery-policy", RecoveryPolicy{RecoveryThreshold: threshold})
+	return c.Do(ctx, http.MethodDelete, "/templates/"+pathSegment(name), nil, nil)
 }
 
 // ResetContactText is the text a customer reads after they ask you for a reset.
@@ -319,13 +315,9 @@ type ListDeliveriesParams struct {
 
 func (c *Client) ListWebhookDeliveries(ctx context.Context, p ListDeliveriesParams) ([]WebhookDelivery, error) {
 	values := url.Values{}
-	if p.Endpoint != "" {
-		values.Set("endpoint", p.Endpoint)
-	}
+	addString(values, "endpoint", p.Endpoint)
 	addInt(values, "limit", p.Limit)
-	if p.StartingAfter > 0 {
-		values.Set("starting_after", strconv.FormatInt(p.StartingAfter, 10))
-	}
+	addInt64(values, "starting_after", p.StartingAfter)
 	page, err := call[struct {
 		Data []WebhookDelivery `json:"data"`
 	}](ctx, c, http.MethodGet, "/webhook-deliveries"+query(values), nil)
@@ -359,12 +351,8 @@ type Usage struct {
 // GetUsage counts usage. Zero times mean this month so far.
 func (c *Client) GetUsage(ctx context.Context, from, to time.Time) (*Usage, error) {
 	values := url.Values{}
-	if !from.IsZero() {
-		values.Set("from", from.UTC().Format(time.RFC3339Nano))
-	}
-	if !to.IsZero() {
-		values.Set("to", to.UTC().Format(time.RFC3339Nano))
-	}
+	addTime(values, "from", from)
+	addTime(values, "to", to)
 	return call[Usage](ctx, c, http.MethodGet, "/usage"+query(values), nil)
 }
 
@@ -401,24 +389,12 @@ type ListAuditEventsParams struct {
 func (c *Client) ListAuditEvents(ctx context.Context, p ListAuditEventsParams) ([]AuditEvent, error) {
 	values := url.Values{}
 	addInt(values, "limit", p.Limit)
-	if p.StartingAfter > 0 {
-		values.Set("starting_after", strconv.FormatInt(p.StartingAfter, 10))
-	}
-	if p.Type != "" {
-		values.Set("type", p.Type)
-	}
-	if p.Actor != "" {
-		values.Set("actor", p.Actor)
-	}
-	if !p.From.IsZero() {
-		values.Set("from", p.From.UTC().Format(time.RFC3339Nano))
-	}
-	if !p.To.IsZero() {
-		values.Set("to", p.To.UTC().Format(time.RFC3339Nano))
-	}
-	if p.Q != "" {
-		values.Set("q", p.Q)
-	}
+	addInt64(values, "starting_after", p.StartingAfter)
+	addString(values, "type", p.Type)
+	addString(values, "actor", p.Actor)
+	addTime(values, "from", p.From)
+	addTime(values, "to", p.To)
+	addString(values, "q", p.Q)
 	page, err := call[struct {
 		Data []AuditEvent `json:"data"`
 	}](ctx, c, http.MethodGet, "/audit-events"+query(values), nil)
@@ -514,30 +490,26 @@ func (c *Client) CreateDisclosure(ctx context.Context, p CreateDisclosureParams,
 }
 
 func (c *Client) GetDisclosure(ctx context.Context, id string) (*Disclosure, error) {
-	return call[Disclosure](ctx, c, http.MethodGet, "/disclosures/"+url.PathEscape(id), nil)
+	return call[Disclosure](ctx, c, http.MethodGet, "/disclosures/"+pathSegment(id), nil)
 }
 
 func (c *Client) ListDisclosures(ctx context.Context, p ListDisclosuresParams) (*DisclosurePage, error) {
 	values := url.Values{}
-	if p.Status != "" {
-		values.Set("status", string(p.Status))
-	}
+	addString(values, "status", string(p.Status))
 	addInt(values, "limit", p.Limit)
-	if p.StartingAfter != "" {
-		values.Set("starting_after", p.StartingAfter)
-	}
+	addString(values, "starting_after", p.StartingAfter)
 	return call[DisclosurePage](ctx, c, http.MethodGet, "/disclosures"+query(values), nil)
 }
 
 // CancelDisclosure stops a request that still waits for the customer.
 func (c *Client) CancelDisclosure(ctx context.Context, id string) (*Disclosure, error) {
-	return call[Disclosure](ctx, c, http.MethodPost, "/disclosures/"+url.PathEscape(id)+"/cancel", nil)
+	return call[Disclosure](ctx, c, http.MethodPost, "/disclosures/"+pathSegment(id)+"/cancel", nil)
 }
 
 // GetDisclosureEnvelope fetches the sealed values of an approved request, as the JSON the vault sent. Open it with disclosure.OpenEnvelope,
 // download any files with DownloadDisclosedFile, then call AckDisclosure. You have 15 minutes after the customer approves.
 func (c *Client) GetDisclosureEnvelope(ctx context.Context, id string) (json.RawMessage, error) {
-	raw, err := call[json.RawMessage](ctx, c, http.MethodGet, "/disclosures/"+url.PathEscape(id)+"/envelope", nil)
+	raw, err := call[json.RawMessage](ctx, c, http.MethodGet, "/disclosures/"+pathSegment(id)+"/envelope", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -563,7 +535,7 @@ type DownloadFileParams struct {
 // A file the customer replaced or removed after approving gives an error that matches ErrFileReplaced. A busy vault answers 429 busy: try
 // again in a moment.
 func (c *Client) DownloadDisclosedFile(ctx context.Context, id, key string, p DownloadFileParams) (io.ReadCloser, error) {
-	path := "/disclosures/" + url.PathEscape(id) + "/files/" + url.PathEscape(key)
+	path := "/disclosures/" + pathSegment(id) + "/files/" + pathSegment(key)
 	if p.Range == nil {
 		return c.stream(ctx, path, nil, http.StatusOK)
 	}
@@ -580,7 +552,7 @@ func (c *Client) DownloadDisclosedFile(ctx context.Context, id, key string, p Do
 
 // AckDisclosure tells the vault that you have the envelope and opened it. The vault deletes it. It is safe to call twice.
 func (c *Client) AckDisclosure(ctx context.Context, id string) (*Disclosure, error) {
-	return call[Disclosure](ctx, c, http.MethodPost, "/disclosures/"+url.PathEscape(id)+"/ack", nil)
+	return call[Disclosure](ctx, c, http.MethodPost, "/disclosures/"+pathSegment(id)+"/ack", nil)
 }
 
 // KeySummary is a key of a record: its name, label, type and version. You never see a value.
@@ -620,13 +592,11 @@ func (c *Client) ListRecords(ctx context.Context, p ListRecordsParams) (*RecordP
 	values := url.Values{}
 	values.Set("customer", p.Customer)
 	addInt(values, "limit", p.Limit)
-	if p.StartingAfter != "" {
-		values.Set("starting_after", p.StartingAfter)
-	}
+	addString(values, "starting_after", p.StartingAfter)
 	return call[RecordPage](ctx, c, http.MethodGet, "/records"+query(values), nil)
 }
 
 // GetRecord returns one record: its token and key names.
 func (c *Client) GetRecord(ctx context.Context, token string) (*Record, error) {
-	return call[Record](ctx, c, http.MethodGet, "/records/"+url.PathEscape(token), nil)
+	return call[Record](ctx, c, http.MethodGet, "/records/"+pathSegment(token), nil)
 }

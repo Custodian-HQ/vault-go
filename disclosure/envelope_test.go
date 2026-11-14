@@ -29,6 +29,7 @@ type fixtureCase struct {
 		FileID string `json:"file_id"`
 		Key    string `json:"key_hex"`
 	} `json:"file_grants"`
+	RK        string          `json:"rk"`
 	Statement string          `json:"statement_cbor_hex"`
 	Envelope  json.RawMessage `json:"envelope"`
 	Refuse    []struct {
@@ -133,7 +134,7 @@ func TestTheStatementIsRebuiltByteForByte(t *testing.T) {
 		ct, _ := strict.DecodeString(w.CT)
 		statement := encodeMap([]pair{
 			{text("v"), uint_(uint64(w.V))}, {text("suite"), text(w.Suite)}, {text("request_id"), text(w.RequestID)}, {text("business_id"), text(w.BusinessID)},
-			{text("customer_id"), text(w.CustomerID)}, {text("kid"), text(w.KID)}, {text("enc"), bstr(enc)}, {text("commit"), bstr(commit)}, {text("ct"), bstr(ct)},
+			{text("customer_id"), text(w.CustomerID)}, {text("kid"), text(w.KID)}, {text("rk"), text(c.RK)}, {text("enc"), bstr(enc)}, {text("commit"), bstr(commit)}, {text("ct"), bstr(ct)},
 		})
 		if hex.EncodeToString(statement) != c.Statement {
 			t.Errorf("%s: the rebuilt statement differs from the one the browser signed", c.Name)
@@ -188,7 +189,7 @@ func TestOnlyTheOwnerOfTheKeyCanOpen(t *testing.T) {
 		t.Fatal(err)
 	}
 	want.PrivateKey = other
-	if _, err := OpenEnvelope(c.Envelope, want); !errors.Is(err, ErrPayload) {
+	if _, err := OpenEnvelope(c.Envelope, want); !errors.Is(err, ErrSignature) {
 		t.Errorf("another private key: %v", err)
 	}
 	want = c.expected()
@@ -216,5 +217,22 @@ func TestTheCBORReaderRefusesWhatIsNotDeterministic(t *testing.T) {
 	}
 	if v, err := decode([]byte{0xa1, 0x61, 0x61, 0x01}); err != nil || v.kind != 'm' || v.m[0].val.num != 1 {
 		t.Errorf("a good map: %+v %v", v, err)
+	}
+}
+
+func TestTheFixtureNamesTheBusinessKeyAndOnlyThatKeyOpens(t *testing.T) {
+	for _, c := range loadFixture(t) {
+		pub, err := hex.DecodeString(c.PublicKey)
+		if err != nil || Fingerprint(c.Suite, pub) != c.RK {
+			t.Errorf("%s: rk is not the fingerprint of the business key", c.Name)
+		}
+		for _, r := range c.Refuse {
+			if r.Name == "sealed to a key that is not the business key" {
+				want := c.expected()
+				if _, err := OpenEnvelope(r.Envelope, want); !errors.Is(err, ErrSignature) {
+					t.Errorf("%s: an envelope sealed to a substituted key: %v", c.Name, err)
+				}
+			}
+		}
 	}
 }

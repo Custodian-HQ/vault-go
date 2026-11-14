@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+
+	"github.com/Custodian-HQ/vault-go/webhook"
 )
 
 func enrolled(customer string, key []byte) json.RawMessage {
@@ -98,3 +100,116 @@ func TestAnEnvelopeSignedByAnotherKeyIsRefusedEvenThoughTheStoreHasAKey(t *testi
 		t.Errorf("want ErrSignature, got %v", err)
 	}
 }
+
+func event(kind, customer string, key []byte, created int64) *webhook.Event {
+	e := &webhook.Event{ID: "evt_x", Type: kind, Created: created}
+	if kind == "customer.enrolled" {
+		e.Data.Object = enrolled(customer, key)
+	} else {
+		e.Data.Object = json.RawMessage(`{"id":"` + customer + `"}`)
+	}
+	return e
+}
+
+func yes(string, string) (bool, error) { return true, nil }
+
+func TestAResetNeedsTheBusinessToApproveIt(t *testing.T) {
+	a, b := make([]byte, 32), make([]byte, 32)
+	b[0] = 1
+	for _, kind := range []string{"customer.reset", "customer.deleted"} {
+		for name, opts := range map[string]ObserveOptions{
+			"no callback":    {},
+			"callback no":    {ApproveReset: func(string, string) (bool, error) { return false, nil }},
+			"callback error": {ApproveReset: func(string, string) (bool, error) { return false, errors.New("lookup failed") }},
+		} {
+			s := &MemoryKeyStore{}
+			_ = ObserveEvent(s, event("customer.enrolled", "cus_1", a, 1), opts)
+			err := ObserveEvent(s, event(kind, "cus_1", nil, 2), opts)
+			if err == nil || (name != "callback error" && !errors.Is(err, ErrResetNotApproved)) {
+				t.Errorf("%s %s: %v", kind, name, err)
+			}
+			if held, _ := s.Get("cus_1"); !held.Equal(ed25519.PublicKey(a)) {
+				t.Errorf("%s %s: the key must stay", kind, name)
+			}
+			if err := ObserveEvent(s, event("customer.enrolled", "cus_1", b, 3), opts); !errors.Is(err, ErrKeyChanged) {
+				t.Errorf("%s %s: another key without an approved reset: %v", kind, name, err)
+			}
+		}
+		s := &MemoryKeyStore{}
+		opts := ObserveOptions{ApproveReset: yes}
+		_ = ObserveEvent(s, event("customer.enrolled", "cus_1", a, 1), opts)
+		if err := ObserveEvent(s, event(kind, "cus_1", nil, 2), opts); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := s.Get("cus_1"); !errors.Is(err, ErrNoKey) {
+			t.Errorf("%s: an approved reset must forget the key", kind)
+		}
+		if err := ObserveEvent(s, event("customer.enrolled", "cus_1", b, 3), opts); err != nil {
+			t.Errorf("%s: the new key after an approved reset: %v", kind, err)
+		}
+		if held, _ := s.Get("cus_1"); !held.Equal(ed25519.PublicKey(b)) {
+			t.Errorf("%s: the new key must be kept", kind)
+		}
+	}
+}
+
+func TestAnOldRetriedEventCannotChangeThePin(t *testing.T) {
+	a, b := make([]byte, 32), make([]byte, 32)
+	b[0] = 1
+	opts := ObserveOptions{ApproveReset: yes}
+
+	// An old customer.enrolled(K1) that arrives after a newer reset is not pinned.
+	s := &MemoryKeyStore{}
+	_ = ObserveEvent(s, event("customer.enrolled", "cus_1", a, 10), opts)
+	_ = ObserveEvent(s, event("customer.reset", "cus_1", nil, 20), opts)
+	if err := ObserveEvent(s, event("customer.enrolled", "cus_1", a, 10), opts); !errors.Is(err, ErrStaleEvent) {
+		t.Fatalf("an old enrolled event: %v", err)
+	}
+	if _, err := s.Get("cus_1"); !errors.Is(err, ErrNoKey) {
+		t.Error("the old key must not be pinned again")
+	}
+	if err := ObserveEvent(s, event("customer.enrolled", "cus_1", b, 30), opts); err != nil {
+		t.Fatal(err)
+	}
+
+	// An old customer.reset that arrives after a newer enrolled keeps the pin.
+	if err := ObserveEvent(s, event("customer.reset", "cus_1", nil, 20), opts); !errors.Is(err, ErrStaleEvent) {
+		t.Fatalf("an old reset event: %v", err)
+	}
+	if held, _ := s.Get("cus_1"); !held.Equal(ed25519.PublicKey(b)) {
+		t.Error("the pin must stay")
+	}
+
+	// Events of the same second are all handled.
+	if err := ObserveEvent(s, event("customer.reset", "cus_1", nil, 30), opts); err != nil {
+		t.Errorf("a reset in the same second: %v", err)
+	}
+	if err := ObserveEvent(s, event("customer.enrolled", "cus_1", a, 30), opts); err != nil {
+		t.Errorf("an enrolled event in the same second: %v", err)
+	}
+
+	// A stale event of another customer is not stale for this one, and a stale event does not move the clock.
+	if err := ObserveEvent(s, event("customer.enrolled", "cus_2", a, 5), opts); err != nil {
+		t.Errorf("another customer: %v", err)
+	}
+	if last, _ := s.LastEvent("cus_1"); last != 30 {
+		t.Errorf("the clock moved to %d", last)
+	}
+}
+
+func TestObserveEventWithAStoreThatHasNoClockSkipsTheOrderCheck(t *testing.T) {
+	s := &plainStore{&MemoryKeyStore{}}
+	a := make([]byte, 32)
+	if err := ObserveEvent(s, event("customer.enrolled", "cus_1", a, 20), ObserveOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := ObserveEvent(s, event("customer.enrolled", "cus_1", a, 10), ObserveOptions{}); err != nil {
+		t.Errorf("no clock, no order check: %v", err)
+	}
+}
+
+type plainStore struct{ m *MemoryKeyStore }
+
+func (p *plainStore) Get(id string) (ed25519.PublicKey, error) { return p.m.Get(id) }
+func (p *plainStore) Put(id string, k ed25519.PublicKey) error { return p.m.Put(id, k) }
+func (p *plainStore) Delete(id string) error                   { return p.m.Delete(id) }
