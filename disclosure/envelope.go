@@ -14,12 +14,12 @@ import (
 
 // The reasons OpenEnvelope refuses an envelope. Check them with errors.Is.
 var (
-	ErrFormat    = errors.New("disclosure: the envelope is not well formed")
+	ErrFormat    = errors.New("disclosure: the envelope is damaged or has the wrong shape")
 	ErrRequest   = errors.New("disclosure: the envelope is for another request")
 	ErrBusiness  = errors.New("disclosure: the envelope is for another business")
 	ErrCustomer  = errors.New("disclosure: the envelope is for another customer")
 	ErrKey       = errors.New("disclosure: the envelope was sealed to another key")
-	ErrSignature = errors.New("disclosure: the signature does not check")
+	ErrSignature = errors.New("disclosure: the customer signature is not valid")
 	ErrPayload   = errors.New("disclosure: the sealed content is not what was approved")
 )
 

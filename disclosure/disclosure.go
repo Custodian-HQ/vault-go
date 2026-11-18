@@ -26,7 +26,7 @@ const (
 )
 
 // ErrCommitment means the stored commitment does not match the key that opened the message.
-var ErrCommitment = errors.New("disclosure: key commitment does not match")
+var ErrCommitment = errors.New("disclosure: the key does not match the one the sender used")
 
 func kemFor(suite string) (hpke.KEM, error) {
 	switch suite {

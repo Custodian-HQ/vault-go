@@ -1,17 +1,9 @@
 package client
 
+import "slices"
+
 // The fixed lists of text values of the API. Use these names instead of writing the text by hand.
 // A newer API can send a value that this library does not know yet: Valid says whether it knows one.
-
-// valid says whether the value is one of the known values of its list.
-func valid[T comparable](value T, known []T) bool {
-	for _, k := range known {
-		if value == k {
-			return true
-		}
-	}
-	return false
-}
 
 // Purpose is what a session is for.
 type Purpose string
@@ -34,7 +26,7 @@ func Purposes() []Purpose {
 	}
 }
 
-func (p Purpose) Valid() bool { return valid(p, Purposes()) }
+func (p Purpose) Valid() bool { return slices.Contains(Purposes(), p) }
 
 // SessionStatus is where a session is in its life.
 type SessionStatus string
@@ -51,7 +43,7 @@ func SessionStatuses() []SessionStatus {
 	return []SessionStatus{SessionCreated, SessionExchanged, SessionCompleted, SessionCancelled, SessionExpired}
 }
 
-func (s SessionStatus) Valid() bool { return valid(s, SessionStatuses()) }
+func (s SessionStatus) Valid() bool { return slices.Contains(SessionStatuses(), s) }
 
 // DisclosureStatus is where a disclosure request is in its life.
 type DisclosureStatus string
@@ -68,7 +60,7 @@ func DisclosureStatuses() []DisclosureStatus {
 	return []DisclosureStatus{DisclosurePending, DisclosureApproved, DisclosureRejected, DisclosureCancelled, DisclosureExpired}
 }
 
-func (s DisclosureStatus) Valid() bool { return valid(s, DisclosureStatuses()) }
+func (s DisclosureStatus) Valid() bool { return slices.Contains(DisclosureStatuses(), s) }
 
 // DisclosureKeyStatus says whether a disclosure key is in use, being replaced, or no longer used.
 type DisclosureKeyStatus string
@@ -83,7 +75,7 @@ func DisclosureKeyStatuses() []DisclosureKeyStatus {
 	return []DisclosureKeyStatus{DisclosureKeyActive, DisclosureKeyRetiring, DisclosureKeyRetired}
 }
 
-func (s DisclosureKeyStatus) Valid() bool { return valid(s, DisclosureKeyStatuses()) }
+func (s DisclosureKeyStatus) Valid() bool { return slices.Contains(DisclosureKeyStatuses(), s) }
 
 // WebhookEndpointStatus says whether a webhook endpoint receives events.
 type WebhookEndpointStatus string
@@ -97,7 +89,7 @@ func WebhookEndpointStatuses() []WebhookEndpointStatus {
 	return []WebhookEndpointStatus{WebhookEndpointEnabled, WebhookEndpointDisabled}
 }
 
-func (s WebhookEndpointStatus) Valid() bool { return valid(s, WebhookEndpointStatuses()) }
+func (s WebhookEndpointStatus) Valid() bool { return slices.Contains(WebhookEndpointStatuses(), s) }
 
 // WebhookDeliveryStatus is where one webhook delivery is.
 type WebhookDeliveryStatus string
@@ -113,7 +105,7 @@ func WebhookDeliveryStatuses() []WebhookDeliveryStatus {
 	return []WebhookDeliveryStatus{WebhookDeliveryPending, WebhookDeliveryRetrying, WebhookDeliveryDelivered, WebhookDeliveryFailed}
 }
 
-func (s WebhookDeliveryStatus) Valid() bool { return valid(s, WebhookDeliveryStatuses()) }
+func (s WebhookDeliveryStatus) Valid() bool { return slices.Contains(WebhookDeliveryStatuses(), s) }
 
 // CustomerState says whether a customer can use their vault, or must enrol again after a reset.
 type CustomerState string
@@ -127,4 +119,4 @@ func CustomerStates() []CustomerState {
 	return []CustomerState{CustomerActive, CustomerResetEnrolmentNeeded}
 }
 
-func (s CustomerState) Valid() bool { return valid(s, CustomerStates()) }
+func (s CustomerState) Valid() bool { return slices.Contains(CustomerStates(), s) }

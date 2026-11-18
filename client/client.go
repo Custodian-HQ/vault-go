@@ -97,7 +97,7 @@ func (c *Client) checkBaseURL() error {
 	case u.Scheme == "http" && (c.allowHTTP || isLocalHost(u.Hostname())):
 		return nil
 	}
-	return errors.New("custodian: the base URL must use https (plain http is only for localhost, or with WithInsecureHTTP)")
+	return errors.New("custodian: the base URL must start with https. Plain http works only for localhost, or with WithInsecureHTTP")
 }
 
 func isLocalHost(h string) bool { return h == "localhost" || h == "127.0.0.1" || h == "::1" }
@@ -110,7 +110,7 @@ func dropKeyOnOtherOrigin(req *http.Request, via []*http.Request) error {
 	}
 	first := via[0].URL
 	if req.URL.Scheme != first.Scheme || req.URL.Host != first.Host {
-		return errors.New("custodian: the API answered with a redirect to another origin; it was not followed")
+		return errors.New("custodian: the API sent the request to another server, so the library did not follow it")
 	}
 	return nil
 }
@@ -132,7 +132,7 @@ func (e *APIError) Error() string {
 
 // ErrFileReplaced means the customer replaced or removed a file after approving it, so the approved key no longer fits: ask the customer
 // again. errors.Is matches it on the *APIError of a 410 file_replaced answer.
-var ErrFileReplaced = errors.New("custodian: the customer replaced or removed the file after approving it; ask again")
+var ErrFileReplaced = errors.New("custodian: the customer replaced or removed the file after approving it. Ask the customer again")
 
 // Is lets errors.Is match the sentinel errors of the package.
 func (e *APIError) Is(target error) bool {
@@ -163,13 +163,13 @@ func (c *Client) Do(ctx context.Context, method, path string, body, out any, opt
 		return err
 	}
 	if int64(len(payload)) > maxResponse {
-		return &APIError{Status: resp.StatusCode, Type: errorTypeAPI, Code: "response_too_large", Message: "the answer is larger than the library reads"}
+		return &APIError{Status: resp.StatusCode, Type: errorTypeAPI, Code: "response_too_large", Message: "the answer is too large to read"}
 	}
 	if out == nil || len(payload) == 0 {
 		return nil
 	}
 	if !json.Valid(payload) {
-		return &APIError{Status: resp.StatusCode, Type: errorTypeAPI, Code: "unparsed_response", Message: "the answer is not JSON"}
+		return &APIError{Status: resp.StatusCode, Type: errorTypeAPI, Code: "unparsed_response", Message: "the answer is not valid JSON"}
 	}
 	return json.Unmarshal(payload, out)
 }
