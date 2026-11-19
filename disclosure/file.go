@@ -15,16 +15,16 @@ import (
 // The reasons OpenFile, or a Read of the file it returns, refuses a file. Check them with errors.Is. No plaintext comes out of a part of
 // the file that did not check.
 var (
-	ErrFileFormat     = errors.New("disclosure: the file is not an encrypted file of version 1")
+	ErrFileFormat     = errors.New("disclosure: the file is not in the expected encrypted format")
 	ErrFileCommitment = errors.New("disclosure: the file was encrypted with another key")
 	ErrFileOpen       = errors.New("disclosure: the file was changed, or it is not the file for this name and record")
 	// ErrFileTruncated means the encrypted file ended early. A download that was cut short gives it.
 	ErrFileTruncated = errors.New("disclosure: the encrypted file ended early")
 	// ErrFileTooLong means the stream has more chunks than the wire format allows (2^32-1).
-	ErrFileTooLong = errors.New("disclosure: the encrypted file has too many chunks")
+	ErrFileTooLong = errors.New("disclosure: the encrypted file is too long")
 	// ErrFileRecords and ErrFileFrame mean the compressed content of the file is not well formed.
-	ErrFileRecords = errors.New("disclosure: the compressed file is not a zstd record list")
-	ErrFileFrame   = errors.New("disclosure: a zstd frame of the file is refused")
+	ErrFileRecords = errors.New("disclosure: the compressed file is damaged")
+	ErrFileFrame   = errors.New("disclosure: the compressed file has a part that is not allowed")
 	// ErrFileKeyCleared means the key was cleared, by Close or Opened.Discard. Fetch and open the envelope again before you acknowledge it.
 	ErrFileKeyCleared = errors.New("disclosure: the file key was cleared; open the envelope again to get it")
 )

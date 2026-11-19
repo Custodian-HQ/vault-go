@@ -26,7 +26,7 @@ var (
 	ErrKeyChanged = errors.New("disclosure: the customer's signing key changed without a reset")
 	// ErrResetNotApproved means a customer.reset or customer.deleted event did not erase the kept key, because ObserveOptions.ApproveReset is not set
 	// or said no. The key stays.
-	ErrResetNotApproved = errors.New("disclosure: the reset was not approved, so the kept signing key stays; set ObserveOptions.ApproveReset")
+	ErrResetNotApproved = errors.New("disclosure: the reset was not approved, so the signing key stays. Set ObserveOptions.ApproveReset to approve resets")
 	// ErrStaleEvent means the event is older than one already handled for the customer. Nothing changed. Treat it as handled and acknowledge the webhook.
 	ErrStaleEvent = errors.New("disclosure: the event is older than one already handled for this customer")
 )
@@ -146,17 +146,14 @@ func ObserveEvent(store KeyStore, event *webhook.Event, opts ObserveOptions) err
 	default:
 		return nil
 	}
-	var o struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal(event.Data.Object, &o); err != nil || o.ID == "" {
-		return ErrFormat
+	id, err := objectID(event.Data.Object)
+	if err != nil {
+		return err
 	}
 	clock, hasClock := store.(EventClock)
 	var last int64
 	if hasClock {
-		var err error
-		last, err = clock.LastEvent(o.ID)
+		last, err = clock.LastEvent(id)
 		if err != nil {
 			return err
 		}
@@ -168,7 +165,7 @@ func ObserveEvent(store KeyStore, event *webhook.Event, opts ObserveOptions) err
 		if opts.ApproveReset == nil {
 			return ErrResetNotApproved
 		}
-		ok, err := opts.ApproveReset(o.ID, event.Type)
+		ok, err := opts.ApproveReset(id, event.Type)
 		if err != nil {
 			return err
 		}
@@ -180,7 +177,7 @@ func ObserveEvent(store KeyStore, event *webhook.Event, opts ObserveOptions) err
 		return err
 	}
 	if hasClock && event.Created > last {
-		return clock.SetLastEvent(o.ID, event.Created)
+		return clock.SetLastEvent(id, event.Created)
 	}
 	return nil
 }
@@ -210,15 +207,23 @@ func Observe(store KeyStore, eventType string, object json.RawMessage) error {
 		}
 		return pin(store, o.ID, key)
 	case eventCustomerReset, eventCustomerDeleted:
-		var o struct {
-			ID string `json:"id"`
+		id, err := objectID(object)
+		if err != nil {
+			return err
 		}
-		if err := json.Unmarshal(object, &o); err != nil || o.ID == "" {
-			return ErrFormat
-		}
-		return store.Delete(o.ID)
+		return store.Delete(id)
 	}
 	return nil
+}
+
+func objectID(object json.RawMessage) (string, error) {
+	var o struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(object, &o); err != nil || o.ID == "" {
+		return "", ErrFormat
+	}
+	return o.ID, nil
 }
 
 // pin keeps the key for a customer who has none, and refuses another key for one who has.
@@ -243,7 +248,7 @@ func pin(store KeyStore, id string, key ed25519.PublicKey) error {
 		}
 		return nil
 	}
-	return errors.New("disclosure: the key store answered PutIfAbsent and Get in ways that do not fit")
+	return errors.New("disclosure: the key store gave PutIfAbsent and Get answers that do not agree")
 }
 
 // OpenEnvelopeFor is OpenEnvelope with the customer's signing key taken from your store. It ignores want.SignKey. If the store holds no key

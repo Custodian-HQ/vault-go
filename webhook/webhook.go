@@ -19,9 +19,9 @@ const HeaderName = "Custodian-Signature"
 const DefaultTolerance = 5 * time.Minute
 
 var (
-	ErrBadHeader    = errors.New("webhook: the signature header is malformed")
+	ErrBadHeader    = errors.New("webhook: the signature header is not valid")
 	ErrBadSignature = errors.New("webhook: the signature does not match")
-	ErrStale        = errors.New("webhook: the timestamp is outside the tolerance")
+	ErrStale        = errors.New("webhook: the signature is too old or too new")
 	ErrNoSecret     = errors.New("webhook: the secret is empty")
 )
 
