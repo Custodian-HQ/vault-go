@@ -173,9 +173,13 @@ If a later event names a different key, `ObserveEvent` returns `disclosure.ErrKe
 Webhooks are signed by Custodian with a secret that Custodian also holds. So a valid signature does not prove that a `customer.reset` is real.
 That is why a reset erases the key only when your `ApproveReset` callback says yes. Without the callback, `ObserveEvent` refuses every reset
 (`disclosure.ErrResetNotApproved`) and keeps the key. Approve a reset only when you started it or confirmed it with your own customer.
-If your store is also a `disclosure.EventClock` (`LastEvent` and `SetLastEvent`), an event older than one already handled returns
-`disclosure.ErrStaleEvent`: a retried old event cannot pin an old key or erase a new one. The older `Observe` function trusts the vault: it asks
-for no approval and does not check the order of events.
+Every `disclosure.KeyStore` keeps the time of the last handled event with `AdvanceLastEvent(customerID, created) (ok bool, err error)`.
+`ObserveEvent` calls it first. It must be one atomic step: keep the newer of the stored time and `created`, and return `false` if `created` is older.
+An event older than one already handled returns `disclosure.ErrStaleEvent` and does nothing else: a retried old event cannot pin an old key
+or erase a new one. The older `Observe` function trusts the vault: it asks for no approval and does not check the order of events.
+
+**Breaking change.** `disclosure.KeyStore` has a new method, `AdvanceLastEvent`. It replaces `EventClock` (`LastEvent` and `SetLastEvent`), which is
+removed. If you have your own store, add the method (see the docs page "Key store"). `disclosure.MemoryKeyStore` has it.
 
 If you keep the keys in a database, make your store an `disclosure.AtomicKeyStore`: add `PutIfAbsent(customerID, key) (stored bool, err error)`,
 one insert that does nothing when a key is there. Then two events handled at the same time for one customer cannot both keep a key.

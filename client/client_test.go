@@ -47,7 +47,7 @@ func TestErrorBodiesBecomeAPIErrors(t *testing.T) {
 		w.Write([]byte(`{"error":{"type":"not_found_error","code":"customer_not_found","message":"No such customer","request_id":"abc"}}`))
 	}))
 	defer server.Close()
-	c, _ := New("k", WithBaseURL(server.URL))
+	c := mustClient(t, server.URL)
 	var apiErr *APIError
 	err := c.Do(context.Background(), http.MethodGet, "/customers/x", nil, nil)
 	if !errors.As(err, &apiErr) || apiErr.Status != 404 || apiErr.Code != "customer_not_found" || apiErr.RequestID != "abc" {
@@ -60,7 +60,7 @@ func TestAnUnreadableErrorBodyStillGivesAnAPIError(t *testing.T) {
 		http.Error(w, "bad gateway", http.StatusBadGateway)
 	}))
 	defer server.Close()
-	c, _ := New("k", WithBaseURL(server.URL))
+	c := mustClient(t, server.URL)
 	var apiErr *APIError
 	if err := c.Do(context.Background(), http.MethodGet, "/x", nil, nil); !errors.As(err, &apiErr) || apiErr.Status != 502 {
 		t.Fatalf("unexpected error: %#v", err)

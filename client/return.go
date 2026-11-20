@@ -2,6 +2,7 @@ package client
 
 import (
 	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 	"net/url"
 	"strings"
@@ -44,10 +45,8 @@ func ApproveURL(sessionURL, fingerprint string) (string, error) {
 	if len(fingerprint) != 64 {
 		return "", ErrBadFingerprint
 	}
-	for _, c := range fingerprint {
-		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F') {
-			return "", ErrBadFingerprint
-		}
+	if _, err := hex.DecodeString(fingerprint); err != nil {
+		return "", ErrBadFingerprint
 	}
 	u, err := url.Parse(sessionURL)
 	if err != nil || u.Fragment == "" || !(u.Scheme == "https" || u.Scheme == "http" && u.Hostname() == "localhost") {

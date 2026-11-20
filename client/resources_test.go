@@ -19,6 +19,11 @@ import (
 	"time"
 )
 
+var (
+	methodLine = regexp.MustCompile(`^    (get|post|put|patch|delete):$`)
+	pathParam  = regexp.MustCompile(`\\\{[^}]+\\\}`)
+)
+
 // specOperations reads "METHOD /path" for every operation in the vendored business API spec.
 func specOperations(t *testing.T) map[string]*regexp.Regexp {
 	t.Helper()
@@ -41,9 +46,9 @@ func specOperations(t *testing.T) map[string]*regexp.Regexp {
 			inPaths = false
 		case inPaths && strings.HasPrefix(line, "  /") && strings.HasSuffix(line, ":"):
 			path = strings.TrimSuffix(strings.TrimSpace(line), ":")
-		case inPaths && regexp.MustCompile(`^    (get|post|put|patch|delete):$`).MatchString(line):
+		case inPaths && methodLine.MatchString(line):
 			method := strings.ToUpper(strings.TrimSuffix(strings.TrimSpace(line), ":"))
-			pattern := regexp.MustCompile(`\\\{[^}]+\\\}`).ReplaceAllString(regexp.QuoteMeta(path), `[^/]+`)
+			pattern := pathParam.ReplaceAllString(regexp.QuoteMeta(path), `[^/]+`)
 			operations[method+" "+path] = regexp.MustCompile(`^` + pattern + `$`)
 		}
 	}
@@ -69,7 +74,7 @@ func TestEverySDKMethodMatchesTheSpecAndTheSpecIsFullyCovered(t *testing.T) {
 		w.Write([]byte(`{"data":[]}`))
 	}))
 	defer server.Close()
-	c, _ := New("k", WithBaseURL(server.URL))
+	c := mustClient(t, server.URL)
 	ctx := context.Background()
 
 	chk := func(_ any, err error) {
@@ -158,7 +163,7 @@ func TestResourceMethodsSendAndReadTheRightShapes(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	c, _ := New("k", WithBaseURL(server.URL))
+	c := mustClient(t, server.URL)
 	ctx := context.Background()
 
 	session, err := c.CreateSession(ctx, CreateSessionParams{Customer: "cus_1", Purpose: PurposeEntry, ReturnURL: "https://a.example/x", State: "s", Keys: []Key{{Name: "id_document", Type: "file"}}})
@@ -197,7 +202,7 @@ func TestDisclosureMethodsSendAndReadTheRightShapes(t *testing.T) {
 		w.Write([]byte(`{"id":"dsc_1","record":"rec_1","customer":"cus_1","keys":["income"],"status":"pending","disclosure_key":"dk_1","expires_at":"2026-10-24T12:00:00Z","decided_at":null,"created_at":"2026-10-24T11:45:00Z"}`))
 	}))
 	defer server.Close()
-	c, _ := New("k", WithBaseURL(server.URL))
+	c := mustClient(t, server.URL)
 	ctx := context.Background()
 
 	d, err := c.CreateDisclosure(ctx, CreateDisclosureParams{Record: "rec_1", Keys: []string{"income"}, Reason: "Check your income.", Fingerprint: "abcd"})
@@ -227,7 +232,7 @@ func TestRecordMethodsSendAndReadTheRightShapes(t *testing.T) {
 		w.Write([]byte(`{"token":"rec_1","customer":"cus_1","version":2,"keys":[],"created_at":"2026-10-27T09:00:00Z","updated_at":"2026-10-27T10:00:00Z"}`))
 	}))
 	defer server.Close()
-	c, _ := New("k", WithBaseURL(server.URL))
+	c := mustClient(t, server.URL)
 	page, err := c.ListRecords(context.Background(), ListRecordsParams{Customer: "cus_1", Limit: 5, StartingAfter: "rec_0"})
 	if err != nil || !page.HasMore || len(page.Data) != 1 || page.Data[0].Keys[0].Name != "income" || page.Data[0].Keys[0].Version != 2 {
 		t.Fatalf("list: %+v %v", page, err)
@@ -250,7 +255,7 @@ func TestRecordMethodsSendAndReadTheRightShapes(t *testing.T) {
 		w.Write([]byte(`{"id":"ses_1","customer":"cus_1","purpose":"view","status":"created","livemode":false,"return_url":"https://a.example/x","state":"s","expires_at":"2026-10-27T12:00:00Z","created_at":"2026-10-27T11:45:00Z","record":"rec_1","url":"https://vault.example/b/org_x/view#st=tok"}`))
 	}))
 	defer srv2.Close()
-	c2, _ := New("k", WithBaseURL(srv2.URL))
+	c2 := mustClient(t, srv2.URL)
 	session, err := c2.CreateSession(context.Background(), CreateSessionParams{Customer: "cus_1", Purpose: "view", ReturnURL: "https://a.example/x", State: "s", Record: "rec_1", Keys: []Key{{Name: "note", MaxSize: 2048}}})
 	if err != nil || session.Record != "rec_1" {
 		t.Fatalf("session: %+v %v", session, err)
@@ -271,7 +276,7 @@ func TestEnvelopeAndAckSendAndReadTheRightShapes(t *testing.T) {
 		w.Write([]byte(`{"id":"dsc_1","status":"approved","envelope_ready":false,"acked_at":"2026-10-27T10:00:00Z"}`))
 	}))
 	defer server.Close()
-	c, _ := New("k", WithBaseURL(server.URL))
+	c := mustClient(t, server.URL)
 	raw, err := c.GetDisclosureEnvelope(context.Background(), "dsc_1")
 	if err != nil || gotMethod != "GET" || gotPath != "/disclosures/dsc_1/envelope" || !strings.Contains(string(raw), `"request_id":"dsc_1"`) {
 		t.Errorf("envelope: %s %v %s %s", raw, err, gotMethod, gotPath)
@@ -308,7 +313,7 @@ func TestCreateCustomerNamedSendsTheNameThatIsOffered(t *testing.T) {
 		w.Write([]byte(`{"id":"cus_1","external_ref":"ref","first_name":"Amina","last_name":"Okafor","name_confirmed":false}`))
 	}))
 	defer server.Close()
-	c, _ := New("k", WithBaseURL(server.URL))
+	c := mustClient(t, server.URL)
 	got, err := c.CreateCustomerNamed(context.Background(), "ref", "Amina", "Okafor")
 	if err != nil || got.FirstName != "Amina" || got.LastName != "Okafor" || got.NameConfirmed {
 		t.Fatalf("customer: %+v %v", got, err)
@@ -323,7 +328,7 @@ func TestAuditEventReadsEveryFieldOfTheSpec(t *testing.T) {
 		w.Write([]byte(`{"data":[{"id":7,"type":"business.suspended","occurred_at":"2026-10-29T10:00:00Z","staff":true},{"id":8,"type":"api_key.created","occurred_at":"2026-10-29T11:00:00Z","user":"usr_1","user_email":"a@example.com","api_key_label":"cdv_test_Qa7x…m2Lp","livemode":false,"api_key":"key_1","payload":{"k":"v"}}],"total":2}`))
 	}))
 	defer server.Close()
-	c, _ := New("k", WithBaseURL(server.URL))
+	c := mustClient(t, server.URL)
 	events, err := c.ListAuditEvents(context.Background(), ListAuditEventsParams{Limit: 5})
 	if err != nil || len(events) != 2 {
 		t.Fatalf("events %v, err %v", events, err)
@@ -351,7 +356,7 @@ func TestDownloadDisclosedFileStreamsTheBodyAndSendsTheRange(t *testing.T) {
 		w.Write([]byte("def"))
 	}))
 	defer server.Close()
-	c, _ := New("k", WithBaseURL(server.URL), WithHTTPClient(&http.Client{Timeout: 100 * time.Millisecond}))
+	c := mustClient(t, server.URL, WithHTTPClient(&http.Client{Timeout: 100 * time.Millisecond}))
 	ctx := context.Background()
 
 	body, err := c.DownloadDisclosedFile(ctx, "dsc_1", "id/doc", DownloadFileParams{})
@@ -392,7 +397,7 @@ func TestDownloadDisclosedFileErrors(t *testing.T) {
 		w.Write([]byte(body))
 	}))
 	defer server.Close()
-	c, _ := New("k", WithBaseURL(server.URL))
+	c := mustClient(t, server.URL)
 	ctx := context.Background()
 
 	status, body = http.StatusGone, `{"error":{"type":"invalid_request_error","code":"file_replaced","message":"replaced"}}`

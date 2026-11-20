@@ -43,7 +43,7 @@ func encodeMap(pairs []pair) []byte {
 	return out
 }
 
-// encodeArray writes an array of text.
+// encodeTextArray writes an array of text.
 func encodeTextArray(items []string) []byte {
 	out := head(4, uint64(len(items)))
 	for _, s := range items {

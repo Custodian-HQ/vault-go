@@ -88,10 +88,6 @@ func TestAnUnknownSuiteIsRefused(t *testing.T) {
 }
 
 func TestFingerprint_MatchesTheSharedFixture(t *testing.T) {
-	raw, err := os.ReadFile(fixtures + "disclosure-key-fingerprint.json")
-	if err != nil {
-		t.Fatal(err)
-	}
 	var fixture struct {
 		Label string `json:"label"`
 		Cases []struct {
@@ -101,9 +97,7 @@ func TestFingerprint_MatchesTheSharedFixture(t *testing.T) {
 			Fingerprint string `json:"fingerprint"`
 		} `json:"cases"`
 	}
-	if err := json.Unmarshal(raw, &fixture); err != nil {
-		t.Fatal(err)
-	}
+	readJSON(t, "disclosure-key-fingerprint.json", &fixture)
 	if fixture.Label != "cdv/v1/dkfp" || len(fixture.Cases) < 4 {
 		t.Fatalf("unexpected fixture: %+v", fixture)
 	}

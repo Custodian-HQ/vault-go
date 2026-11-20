@@ -1,11 +1,14 @@
 package disclosure
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/Custodian-HQ/vault-go/webhook"
@@ -197,19 +200,119 @@ func TestAnOldRetriedEventCannotChangeThePin(t *testing.T) {
 	}
 }
 
-func TestObserveEventWithAStoreThatHasNoClockSkipsTheOrderCheck(t *testing.T) {
-	s := &plainStore{&MemoryKeyStore{}}
+func TestAdvanceLastEventNeverGoesDown(t *testing.T) {
+	s := &MemoryKeyStore{}
+	for _, c := range []struct {
+		created int64
+		want    bool
+		last    int64
+	}{{10, true, 10}, {20, true, 20}, {15, false, 20}, {20, true, 20}, {0, false, 20}} {
+		got, err := s.AdvanceLastEvent("cus_1", c.created)
+		if err != nil || got != c.want {
+			t.Errorf("AdvanceLastEvent(%d) = %v, %v; want %v", c.created, got, err, c.want)
+		}
+		if last, _ := s.LastEvent("cus_1"); last != c.last {
+			t.Errorf("after %d the clock is %d, want %d", c.created, last, c.last)
+		}
+	}
+}
+
+func TestAdvanceLastEventAtOnceNeverLowersTheClock(t *testing.T) {
+	s := &MemoryKeyStore{}
+	const n = 64
+	var wg sync.WaitGroup
+	var refused atomic.Int32
+	start := make(chan struct{})
+	// One event is newer than all others. Events older than it are refused only if it came first, so every call must give the answer
+	// that matches the clock at its own moment: a refused time is always below the clock, and the clock never goes down.
+	for i := int64(1); i <= n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			ok, err := s.AdvanceLastEvent("cus_1", i)
+			if err != nil {
+				t.Error(err)
+			}
+			if !ok {
+				refused.Add(1)
+				if last, _ := s.LastEvent("cus_1"); last <= i {
+					t.Errorf("event %d was refused but the clock is %d", i, last)
+				}
+			}
+		}()
+	}
+	close(start)
+	wg.Wait()
+	if last, _ := s.LastEvent("cus_1"); last != n {
+		t.Errorf("the clock is %d, want %d", last, n)
+	}
+}
+
+func TestObserveEventAtOnceRefusesTheStaleEventExactlyOnce(t *testing.T) {
+	a, b := bytes.Repeat([]byte{1}, 32), bytes.Repeat([]byte{2}, 32)
+	for range 200 {
+		s := &MemoryKeyStore{}
+		if _, err := s.AdvanceLastEvent("cus_1", 20); err != nil {
+			t.Fatal(err)
+		}
+		var wg sync.WaitGroup
+		errs := make([]error, 2)
+		start := make(chan struct{})
+		for i, e := range []*webhook.Event{event("customer.enrolled", "cus_1", a, 10), event("customer.enrolled", "cus_1", b, 30)} {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-start
+				errs[i] = ObserveEvent(s, e, ObserveOptions{})
+			}()
+		}
+		close(start)
+		wg.Wait()
+		if !errors.Is(errs[0], ErrStaleEvent) {
+			t.Fatalf("the stale event got %v, want ErrStaleEvent", errs[0])
+		}
+		if errs[1] != nil {
+			t.Fatalf("the newer event failed: %v", errs[1])
+		}
+		if last, _ := s.LastEvent("cus_1"); last != 30 {
+			t.Fatalf("the clock is %d, want 30", last)
+		}
+		if held, _ := s.Get("cus_1"); !held.Equal(ed25519.PublicKey(b)) {
+			t.Fatal("the stale event changed the key")
+		}
+	}
+}
+
+func TestAStaleEventDoesNotCallApproveReset(t *testing.T) {
+	s := &MemoryKeyStore{}
 	a := make([]byte, 32)
 	if err := ObserveEvent(s, event("customer.enrolled", "cus_1", a, 20), ObserveOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := ObserveEvent(s, event("customer.enrolled", "cus_1", a, 10), ObserveOptions{}); err != nil {
-		t.Errorf("no clock, no order check: %v", err)
+	called := false
+	opts := ObserveOptions{ApproveReset: func(string, string) (bool, error) { called = true; return true, nil }}
+	if err := ObserveEvent(s, event("customer.reset", "cus_1", nil, 10), opts); !errors.Is(err, ErrStaleEvent) {
+		t.Fatalf("got %v, want ErrStaleEvent", err)
+	}
+	if called {
+		t.Error("ApproveReset ran for a stale event")
+	}
+	if _, err := s.Get("cus_1"); err != nil {
+		t.Error("the key must stay")
 	}
 }
 
-type plainStore struct{ m *MemoryKeyStore }
-
-func (p *plainStore) Get(id string) (ed25519.PublicKey, error) { return p.m.Get(id) }
-func (p *plainStore) Put(id string, k ed25519.PublicKey) error { return p.m.Put(id, k) }
-func (p *plainStore) Delete(id string) error                   { return p.m.Delete(id) }
+func TestMemoryKeyStoreGetReturnsCopy(t *testing.T) {
+	store := &MemoryKeyStore{}
+	key := ed25519.PublicKey(bytes.Repeat([]byte{7}, ed25519.PublicKeySize))
+	if err := store.Put("cus_1", key); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := store.Get("cus_1")
+	got[0] = 0
+	again, _ := store.Get("cus_1")
+	if !again.Equal(key) {
+		t.Fatal("changing a returned key changed the kept key")
+	}
+}

@@ -30,11 +30,7 @@ func recorder(t *testing.T, status int, answer string) (*Client, func() seenRequ
 		w.Write([]byte(answer))
 	}))
 	t.Cleanup(server.Close)
-	c, err := New("k", WithBaseURL(server.URL))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return c, func() seenRequest { return seen }
+	return mustClient(t, server.URL), func() seenRequest { return seen }
 }
 
 func sameJSON(t *testing.T, got []byte, want string) {

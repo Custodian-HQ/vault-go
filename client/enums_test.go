@@ -100,11 +100,7 @@ func TestEnumsAreSentAndReadAsText(t *testing.T) {
 		_, _ = w.Write([]byte(`{"id":"ses_1","purpose":"recovery_settings","status":"created"}`))
 	}))
 	defer srv.Close()
-	c, err := New("key", WithBaseURL(srv.URL))
-	if err != nil {
-		t.Fatal(err)
-	}
-	session, err := c.CreateSession(context.Background(), CreateSessionParams{Customer: "cus_1", Purpose: PurposeRecoverySettings, ReturnURL: "https://a.example/x", State: "s"})
+	session, err := mustClient(t, srv.URL).CreateSession(context.Background(), CreateSessionParams{Customer: "cus_1", Purpose: PurposeRecoverySettings, ReturnURL: "https://a.example/x", State: "s"})
 	if err != nil {
 		t.Fatal(err)
 	}

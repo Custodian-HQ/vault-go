@@ -21,6 +21,17 @@ func call[T any](ctx context.Context, c *Client, method, path string, body any, 
 	return &out, nil
 }
 
+// list reads a {"data": [...]} answer of a GET and returns the items.
+func list[T any](ctx context.Context, c *Client, path string) ([]T, error) {
+	page, err := call[struct {
+		Data []T `json:"data"`
+	}](ctx, c, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	return page.Data, nil
+}
+
 func query(values url.Values) string {
 	if len(values) == 0 {
 		return ""
@@ -223,13 +234,7 @@ type Template struct {
 }
 
 func (c *Client) ListTemplates(ctx context.Context) ([]Template, error) {
-	page, err := call[struct {
-		Data []Template `json:"data"`
-	}](ctx, c, http.MethodGet, "/templates", nil)
-	if err != nil {
-		return nil, err
-	}
-	return page.Data, nil
+	return list[Template](ctx, c, "/templates")
 }
 
 func (c *Client) CreateTemplate(ctx context.Context, t Template) (*Template, error) {
@@ -281,13 +286,7 @@ type WebhookEndpoint struct {
 }
 
 func (c *Client) ListWebhookEndpoints(ctx context.Context) ([]WebhookEndpoint, error) {
-	page, err := call[struct {
-		Data []WebhookEndpoint `json:"data"`
-	}](ctx, c, http.MethodGet, "/webhook-endpoints", nil)
-	if err != nil {
-		return nil, err
-	}
-	return page.Data, nil
+	return list[WebhookEndpoint](ctx, c, "/webhook-endpoints")
 }
 
 // WebhookDelivery is one event on its way to one endpoint.
@@ -318,13 +317,7 @@ func (c *Client) ListWebhookDeliveries(ctx context.Context, p ListDeliveriesPara
 	addString(values, "endpoint", p.Endpoint)
 	addInt(values, "limit", p.Limit)
 	addInt64(values, "starting_after", p.StartingAfter)
-	page, err := call[struct {
-		Data []WebhookDelivery `json:"data"`
-	}](ctx, c, http.MethodGet, "/webhook-deliveries"+query(values), nil)
-	if err != nil {
-		return nil, err
-	}
-	return page.Data, nil
+	return list[WebhookDelivery](ctx, c, "/webhook-deliveries"+query(values))
 }
 
 // RetryWebhookDelivery makes a waiting or failed delivery ready at once. A delivery that used all its tries gets one more.
@@ -395,13 +388,7 @@ func (c *Client) ListAuditEvents(ctx context.Context, p ListAuditEventsParams) (
 	addTime(values, "from", p.From)
 	addTime(values, "to", p.To)
 	addString(values, "q", p.Q)
-	page, err := call[struct {
-		Data []AuditEvent `json:"data"`
-	}](ctx, c, http.MethodGet, "/audit-events"+query(values), nil)
-	if err != nil {
-		return nil, err
-	}
-	return page.Data, nil
+	return list[AuditEvent](ctx, c, "/audit-events"+query(values))
 }
 
 // DisclosureKey is a public key you receive disclosures with. Fingerprint is not a secret: keep it in your app config and send it
@@ -423,13 +410,7 @@ type DisclosureKey struct {
 // ListDisclosureKeys returns the keys of the key's mode, newest first. Keys are registered and retired in the Console, where a
 // member confirms with a code. This API cannot change them.
 func (c *Client) ListDisclosureKeys(ctx context.Context) ([]DisclosureKey, error) {
-	list, err := call[struct {
-		Data []DisclosureKey `json:"data"`
-	}](ctx, c, http.MethodGet, "/disclosure-keys", nil)
-	if err != nil {
-		return nil, err
-	}
-	return list.Data, nil
+	return list[DisclosureKey](ctx, c, "/disclosure-keys")
 }
 
 // CreateDisclosureParams asks for a disclosure. Fingerprint is the fingerprint of your disclosure key.
