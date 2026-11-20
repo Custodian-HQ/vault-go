@@ -5,16 +5,12 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
 	"testing/iotest"
-
-	"github.com/klauspost/compress/zstd"
 )
 
 type streamCase struct {
@@ -62,24 +58,9 @@ type zstdFixture struct {
 
 func load[T any](t *testing.T, name string) T {
 	t.Helper()
-	raw, err := os.ReadFile("../testdata/fixtures/v1/" + name)
-	if err != nil {
-		t.Fatal(err)
-	}
 	var out T
-	if err := json.Unmarshal(raw, &out); err != nil {
-		t.Fatal(err)
-	}
+	readJSON(t, name, &out)
 	return out
-}
-
-func unhex(t *testing.T, s string) []byte {
-	t.Helper()
-	b, err := hex.DecodeString(s)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return b
 }
 
 // The context the file-stream fixture was sealed with.
@@ -130,9 +111,11 @@ func seal(t *testing.T, key, keyID []byte, c FileContext, fileID string, flags b
 	}
 }
 
+func fileOf(key []byte) File { return File{FileID: fixtureFileID, Key: bytes.Clone(key)} }
+
 func openChunks(t *testing.T, key, stream []byte, c FileContext) ([]byte, error) {
 	t.Helper()
-	r, err := OpenFile(File{FileID: fixtureFileID, Key: append([]byte{}, key...)}, bytes.NewReader(stream), c)
+	r, err := OpenFile(fileOf(key), bytes.NewReader(stream), c)
 	if err != nil {
 		return nil, err
 	}
@@ -151,15 +134,15 @@ func TestTheFileContextIsTheOneTheFixtureWasSealedWith(t *testing.T) {
 
 func TestEveryFixtureStreamOpensToItsPlaintext(t *testing.T) {
 	f := load[streamFixture](t, "file-stream.json")
-	key := unhex(t, f.Key)
+	key := mustHex(t, f.Key)
 	if len(f.Cases) < 6 {
 		t.Fatalf("the fixture lists %d cases", len(f.Cases))
 	}
 	for _, c := range f.Cases {
-		stream := unhex(t, c.Stream)
+		stream := mustHex(t, c.Stream)
 		if c.Stream == "" {
 			// Large cases give only a hash. The test writer, checked against that hash, rebuilds them.
-			stream = seal(t, key, unhex(t, f.KeyID), fixtureContext, fixtureFileID, c.Flags, c.ChunkSize, unhex(t, c.Salt), unhex(t, c.Prefix), seeded(c.Seed, c.Bytes))
+			stream = seal(t, key, mustHex(t, f.KeyID), fixtureContext, fixtureFileID, c.Flags, c.ChunkSize, mustHex(t, c.Salt), mustHex(t, c.Prefix), seeded(c.Seed, c.Bytes))
 		}
 		if sum := sha256.Sum256(stream); hex.EncodeToString(sum[:]) != c.Hash || len(stream) != c.Total {
 			t.Fatalf("%s: the stream does not match the fixture hash", c.Name)
@@ -176,7 +159,7 @@ func TestEveryFixtureStreamOpensToItsPlaintext(t *testing.T) {
 func TestTheTestWriterGivesTheFixtureBytes(t *testing.T) {
 	f := load[streamFixture](t, "file-stream.json")
 	for _, c := range f.Cases {
-		got := seal(t, unhex(t, f.Key), unhex(t, f.KeyID), fixtureContext, fixtureFileID, c.Flags, c.ChunkSize, unhex(t, c.Salt), unhex(t, c.Prefix), seeded(c.Seed, c.Bytes))
+		got := seal(t, mustHex(t, f.Key), mustHex(t, f.KeyID), fixtureContext, fixtureFileID, c.Flags, c.ChunkSize, mustHex(t, c.Salt), mustHex(t, c.Prefix), seeded(c.Seed, c.Bytes))
 		if sum := sha256.Sum256(got); hex.EncodeToString(sum[:]) != c.Hash {
 			t.Errorf("%s: the test writer differs from the fixture", c.Name)
 		}
@@ -185,7 +168,7 @@ func TestTheTestWriterGivesTheFixtureBytes(t *testing.T) {
 
 func TestEveryFixtureRefusalIsRefusedForTheRightReason(t *testing.T) {
 	f := load[streamFixture](t, "file-stream.json")
-	key := unhex(t, f.Key)
+	key := mustHex(t, f.Key)
 	if len(f.MustFail) < 20 {
 		t.Fatalf("the fixture lists %d refusals", len(f.MustFail))
 	}
@@ -197,11 +180,11 @@ func TestEveryFixtureRefusalIsRefusedForTheRightReason(t *testing.T) {
 		k, ctx := key, fixtureContext
 		switch c.Name {
 		case "another key":
-			k = unhex(t, f.OtherKey)
+			k = mustHex(t, f.OtherKey)
 		case "another AAD":
 			ctx.Name = "utility_bill"
 		}
-		if _, err := openChunks(t, k, unhex(t, c.Stream), ctx); !errors.Is(err, want) {
+		if _, err := openChunks(t, k, mustHex(t, c.Stream), ctx); !errors.Is(err, want) {
 			t.Errorf("%s: want %s, got %v", c.Name, c.Error, err)
 		}
 	}
@@ -213,7 +196,7 @@ func TestNoPlaintextComesFromAFirstChunkThatDoesNotCheck(t *testing.T) {
 		if !strings.Contains(c.Name, "first chunk") {
 			continue
 		}
-		if r, err := OpenFile(File{FileID: fixtureFileID, Key: unhex(t, f.Key)}, bytes.NewReader(unhex(t, c.Stream)), fixtureContext); r != nil || !errors.Is(err, ErrFileOpen) {
+		if r, err := OpenFile(File{FileID: fixtureFileID, Key: mustHex(t, f.Key)}, bytes.NewReader(mustHex(t, c.Stream)), fixtureContext); r != nil || !errors.Is(err, ErrFileOpen) {
 			t.Errorf("%s: OpenFile returned a reader (%v)", c.Name, err)
 		}
 	}
@@ -221,18 +204,18 @@ func TestNoPlaintextComesFromAFirstChunkThatDoesNotCheck(t *testing.T) {
 
 func TestAFileOpensOnlyInItsOwnContext(t *testing.T) {
 	f := load[streamFixture](t, "file-stream.json")
-	stream := unhex(t, f.Cases[1].Stream)
+	stream := mustHex(t, f.Cases[1].Stream)
 	for name, c := range map[string]FileContext{
 		"another key name": {BusinessID: "org_0123", CustomerID: "cus_0123", Record: "rec_0123", Name: "utility_bill"},
 		"another record":   {BusinessID: "org_0123", CustomerID: "cus_0123", Record: "rec_9999", Name: "id_document"},
 		"another customer": {BusinessID: "org_0123", CustomerID: "cus_9999", Record: "rec_0123", Name: "id_document"},
 		"another business": {BusinessID: "org_9999", CustomerID: "cus_0123", Record: "rec_0123", Name: "id_document"},
 	} {
-		if _, err := OpenFile(File{FileID: fixtureFileID, Key: unhex(t, f.Key)}, bytes.NewReader(stream), c); !errors.Is(err, ErrFileOpen) {
+		if _, err := OpenFile(File{FileID: fixtureFileID, Key: mustHex(t, f.Key)}, bytes.NewReader(stream), c); !errors.Is(err, ErrFileOpen) {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
-	if _, err := OpenFile(File{FileID: "file_9999", Key: unhex(t, f.Key)}, bytes.NewReader(stream), fixtureContext); !errors.Is(err, ErrFileOpen) {
+	if _, err := OpenFile(File{FileID: "file_9999", Key: mustHex(t, f.Key)}, bytes.NewReader(stream), fixtureContext); !errors.Is(err, ErrFileOpen) {
 		t.Errorf("another file id: %v", err)
 	}
 }
@@ -247,14 +230,14 @@ func TestTheZstdRecordsOfTheFixtureDecode(t *testing.T) {
 		t.Fatalf("block %d and frame %d, the fixture says %d and %d", zstdBlockSize, zstdMaxFrame, f.BlockSize, f.MaxFrame)
 	}
 	for _, c := range f.Cases {
-		got, err := io.ReadAll(&recordReader{in: bytes.NewReader(unhex(t, c.Records))})
+		got, err := io.ReadAll(&recordReader{in: bytes.NewReader(mustHex(t, c.Records))})
 		if err != nil || !bytes.Equal(got, zstdText(c.Bytes)) {
 			t.Errorf("%s: %d bytes, %v", c.Name, len(got), err)
 		}
 	}
 	errs := map[string]error{"frame": ErrFileFrame, "format": ErrFileRecords}
 	for _, c := range f.MustFail {
-		if _, err := io.ReadAll(&recordReader{in: bytes.NewReader(unhex(t, c.Records))}); !errors.Is(err, errs[c.Error]) {
+		if _, err := io.ReadAll(&recordReader{in: bytes.NewReader(mustHex(t, c.Records))}); !errors.Is(err, errs[c.Error]) {
 			t.Errorf("%s: want %s, got %v", c.Name, c.Error, err)
 		}
 	}
@@ -271,8 +254,8 @@ func TestACompressedFileOpensEndToEndAndTheKeyIsClearedOnClose(t *testing.T) {
 	f := load[zstdFixture](t, "zstd-records.json")
 	key := bytes.Repeat([]byte{0x42}, 32)
 	for _, c := range f.Cases {
-		stream := sealedZstd(t, key, fixtureContext, fixtureFileID, unhex(t, c.Records))
-		grant := File{FileID: fixtureFileID, Key: append([]byte{}, key...)}
+		stream := sealedZstd(t, key, fixtureContext, fixtureFileID, mustHex(t, c.Records))
+		grant := fileOf(key)
 		r, err := OpenFile(grant, iotest.OneByteReader(bytes.NewReader(stream)), fixtureContext)
 		if err != nil {
 			t.Fatalf("%s: %v", c.Name, err)
@@ -299,7 +282,7 @@ func TestAHostileFrameInsideAGoodStreamIsRefused(t *testing.T) {
 	key := bytes.Repeat([]byte{0x42}, 32)
 	errs := map[string]error{"frame": ErrFileFrame, "format": ErrFileRecords}
 	for _, c := range f.MustFail {
-		r, err := OpenFile(File{FileID: fixtureFileID, Key: append([]byte{}, key...)}, bytes.NewReader(sealedZstd(t, key, fixtureContext, fixtureFileID, unhex(t, c.Records))), fixtureContext)
+		r, err := OpenFile(fileOf(key), bytes.NewReader(sealedZstd(t, key, fixtureContext, fixtureFileID, mustHex(t, c.Records))), fixtureContext)
 		if err != nil {
 			t.Fatalf("%s: %v", c.Name, err)
 		}
@@ -311,22 +294,12 @@ func TestAHostileFrameInsideAGoodStreamIsRefused(t *testing.T) {
 
 func TestAFileCutAtAChunkBorderIsTruncated(t *testing.T) {
 	key := bytes.Repeat([]byte{0x42}, 32)
-	plain := seeded("cut", 3*fileMinChunk+10)
-	enc, err := zstd.NewWriter(nil, zstd.WithEncoderConcurrency(1))
-	if err != nil {
-		t.Fatal(err)
-	}
-	frame := enc.EncodeAll(plain, nil)
-	records := append(binary.BigEndian.AppendUint32(nil, uint32(len(frame))), frame...)
-	salt, prefix := bytes.Repeat([]byte{7}, fileSaltSize), bytes.Repeat([]byte{9}, filePrefixSize)
-	for name, stream := range map[string][]byte{
-		"plain":      seal(t, key, fileKeyID, fixtureContext, fixtureFileID, 0, fileMinChunk, salt, prefix, plain),
-		"compressed": seal(t, key, fileKeyID, fixtureContext, fixtureFileID, fileFlagZstd, fileMinChunk, salt, prefix, records),
-	} {
+	plain, streams := sealedFiles(t, key)
+	for name, stream := range streams {
 		if len(stream) < fileHeaderSize+3*(fileMinChunk+fileTagSize) {
 			t.Fatalf("%s: the stream has fewer than three chunks", name)
 		}
-		r, err := OpenFile(File{FileID: fixtureFileID, Key: append([]byte{}, key...)}, bytes.NewReader(stream), fixtureContext)
+		r, err := OpenFile(fileOf(key), bytes.NewReader(stream), fixtureContext)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -334,7 +307,7 @@ func TestAFileCutAtAChunkBorderIsTruncated(t *testing.T) {
 			t.Fatalf("%s: the whole stream: %v", name, err)
 		}
 		cut := stream[:fileHeaderSize+2*(fileMinChunk+fileTagSize)]
-		r, err = OpenFile(File{FileID: fixtureFileID, Key: append([]byte{}, key...)}, bytes.NewReader(cut), fixtureContext)
+		r, err = OpenFile(fileOf(key), bytes.NewReader(cut), fixtureContext)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -380,9 +353,9 @@ func TestAFileFromAnOpenedEnvelopeOpensWithItsGrant(t *testing.T) {
 
 func TestAReadErrorOfTheDownloadIsNotHiddenAsAChangedFile(t *testing.T) {
 	f := load[streamFixture](t, "file-stream.json")
-	stream := unhex(t, f.Refusal.Stream)
+	stream := mustHex(t, f.Refusal.Stream)
 	broken := io.MultiReader(bytes.NewReader(stream[:fileHeaderSize+100]), iotest.ErrReader(errors.New("connection reset")))
-	if _, err := OpenFile(File{FileID: fixtureFileID, Key: unhex(t, f.Key)}, broken, fixtureContext); err == nil || err.Error() != "connection reset" {
+	if _, err := OpenFile(File{FileID: fixtureFileID, Key: mustHex(t, f.Key)}, broken, fixtureContext); err == nil || err.Error() != "connection reset" {
 		t.Errorf("got %v", err)
 	}
 }

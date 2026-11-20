@@ -31,7 +31,8 @@ func download(t *testing.T, stream []byte, cut int) io.ReadCloser {
 	return resp.Body
 }
 
-func sealedFiles(t *testing.T, key []byte) map[string][]byte {
+// sealedFiles seals three chunks and a bit of plaintext twice: as it is, and as a zstd record list. It returns the plaintext too.
+func sealedFiles(t *testing.T, key []byte) ([]byte, map[string][]byte) {
 	t.Helper()
 	plain := seeded("transport", 3*fileMinChunk+10)
 	enc, err := zstd.NewWriter(nil, zstd.WithEncoderConcurrency(1))
@@ -41,7 +42,7 @@ func sealedFiles(t *testing.T, key []byte) map[string][]byte {
 	frame := enc.EncodeAll(plain, nil)
 	records := append(binary.BigEndian.AppendUint32(nil, uint32(len(frame))), frame...)
 	salt, prefix := bytes.Repeat([]byte{7}, fileSaltSize), bytes.Repeat([]byte{9}, filePrefixSize)
-	return map[string][]byte{
+	return plain, map[string][]byte{
 		"plain":      seal(t, key, fileKeyID, fixtureContext, fixtureFileID, 0, fileMinChunk, salt, prefix, plain),
 		"compressed": seal(t, key, fileKeyID, fixtureContext, fixtureFileID, fileFlagZstd, fileMinChunk, salt, prefix, records),
 	}
@@ -62,9 +63,10 @@ func notAFileError(t *testing.T, name string, err error) {
 func TestACutConnectionIsNotReportedAsAChangedOrMalformedFile(t *testing.T) {
 	key := bytes.Repeat([]byte{0x42}, 32)
 	chunk := fileMinChunk + fileTagSize
-	for name, stream := range sealedFiles(t, key) {
+	_, streams := sealedFiles(t, key)
+	for name, stream := range streams {
 		open := func(body io.Reader) (io.ReadCloser, error) {
-			return OpenFile(File{FileID: fixtureFileID, Key: append([]byte{}, key...)}, body, fixtureContext)
+			return OpenFile(fileOf(key), body, fixtureContext)
 		}
 
 		_, err := open(download(t, stream, 40))
@@ -92,15 +94,16 @@ func TestACutConnectionIsNotReportedAsAChangedOrMalformedFile(t *testing.T) {
 func TestACleanEndInsideAChunkIsStillAChangedFile(t *testing.T) {
 	key := bytes.Repeat([]byte{0x42}, 32)
 	chunk := fileMinChunk + fileTagSize
-	for name, stream := range sealedFiles(t, key) {
-		r, err := OpenFile(File{FileID: fixtureFileID, Key: append([]byte{}, key...)}, bytes.NewReader(stream[:fileHeaderSize+chunk+200]), fixtureContext)
+	_, streams := sealedFiles(t, key)
+	for name, stream := range streams {
+		r, err := OpenFile(fileOf(key), bytes.NewReader(stream[:fileHeaderSize+chunk+200]), fixtureContext)
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
 		if _, err := io.ReadAll(r); !errors.Is(err, ErrFileOpen) {
 			t.Errorf("%s: want ErrFileOpen, got %v", name, err)
 		}
-		if _, err := OpenFile(File{FileID: fixtureFileID, Key: append([]byte{}, key...)}, bytes.NewReader(stream[:40]), fixtureContext); !errors.Is(err, ErrFileFormat) {
+		if _, err := OpenFile(fileOf(key), bytes.NewReader(stream[:40]), fixtureContext); !errors.Is(err, ErrFileFormat) {
 			t.Errorf("%s: a clean end inside the header: want ErrFileFormat, got %v", name, err)
 		}
 	}

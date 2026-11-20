@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"os"
 	"testing"
 )
 
@@ -42,16 +41,10 @@ type fixtureCase struct {
 
 func loadFixture(t *testing.T) []fixtureCase {
 	t.Helper()
-	raw, err := os.ReadFile("../testdata/fixtures/v1/disclosure-envelope.json")
-	if err != nil {
-		t.Fatal(err)
-	}
 	var f struct {
 		Cases []fixtureCase `json:"cases"`
 	}
-	if err := json.Unmarshal(raw, &f); err != nil {
-		t.Fatal(err)
-	}
+	readJSON(t, "disclosure-envelope.json", &f)
 	return f.Cases
 }
 

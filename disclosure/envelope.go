@@ -3,9 +3,7 @@ package disclosure
 import (
 	"bytes"
 	"crypto/ed25519"
-	"crypto/hpke"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -151,15 +149,7 @@ func OpenEnvelope(raw []byte, want Expected) (*Opened, error) {
 	aad := encodeTextArray(names)
 	info := append(append(append([]byte(infoLabel), 0), w.BusinessID...), append(append([]byte{0}, w.RequestID...), append([]byte{0}, rk...)...)...)
 
-	recipient, err := hpke.NewRecipient(enc, key, hpke.HKDFSHA256(), hpke.AES256GCM(), info)
-	if err != nil {
-		return nil, ErrPayload
-	}
-	expected, err := recipient.Export(commitLabel, commitSize)
-	if err != nil || subtle.ConstantTimeCompare(expected, commit) != 1 {
-		return nil, ErrPayload
-	}
-	plain, err := recipient.Open(aad, ct)
+	plain, err := Open(want.Suite, want.PrivateKey, enc, info, aad, ct, commit)
 	if err != nil {
 		return nil, ErrPayload
 	}

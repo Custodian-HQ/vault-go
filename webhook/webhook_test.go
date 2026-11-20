@@ -160,10 +160,7 @@ func TestTheToleranceIsTheOneYouGiveAndZeroMeansTheDefault(t *testing.T) {
 
 func TestVerifyRefusesAnEmptySecret(t *testing.T) {
 	body := []byte(`{"id":"evt_1"}`)
-	mac := hmac.New(sha256.New, nil)
-	mac.Write([]byte("1700000000."))
-	mac.Write(body)
-	header := "t=1700000000,v1=" + hex.EncodeToString(mac.Sum(nil))
+	header := sign("", 1700000000, body)
 	if err := Verify("", header, body, 0, time.Unix(1700000000, 0)); !errors.Is(err, ErrNoSecret) {
 		t.Fatalf("an empty secret must be refused, got %v", err)
 	}

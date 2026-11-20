@@ -2,7 +2,6 @@ package disclosure
 
 import (
 	"crypto/ed25519"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"sync"
@@ -36,6 +35,11 @@ type KeyStore interface {
 	Get(customerID string) (ed25519.PublicKey, error)
 	Put(customerID string, key ed25519.PublicKey) error
 	Delete(customerID string) error
+	// AdvanceLastEvent keeps the created time of the last event handled for the customer. It must be one atomic step, for example
+	// UPDATE ... SET last_event = GREATEST(last_event, $2) ... RETURNING. If created is older than the kept time, it changes nothing and
+	// returns false. Otherwise it keeps the newer of the two times and returns true. An equal time returns true: events of one second
+	// cannot be put in order, and a retry of an event that failed must pass.
+	AdvanceLastEvent(customerID string, created int64) (bool, error)
 }
 
 // AtomicKeyStore is a KeyStore that can also keep a key only if none is kept, in one step. Observe uses it when the store has it, so two
@@ -47,14 +51,6 @@ type AtomicKeyStore interface {
 	PutIfAbsent(customerID string, key ed25519.PublicKey) (stored bool, err error)
 }
 
-// EventClock is a KeyStore that also keeps the time of the last event handled for each customer. ObserveEvent uses it to refuse an old
-// event that arrives late, for example a retried customer.enrolled after a newer reset. Keep it in the same database as the keys.
-type EventClock interface {
-	// LastEvent is the created time of the last event handled for the customer, or 0 if none.
-	LastEvent(customerID string) (int64, error)
-	SetLastEvent(customerID string, created int64) error
-}
-
 // MemoryKeyStore is a KeyStore in memory. It is for tests and for programs that do not restart.
 type MemoryKeyStore struct {
 	mu    sync.Mutex
@@ -62,22 +58,26 @@ type MemoryKeyStore struct {
 	clock map[string]int64
 }
 
-// LastEvent is the EventClock method.
+// LastEvent is the time kept by AdvanceLastEvent, or 0 if none.
 func (m *MemoryKeyStore) LastEvent(customerID string) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.clock[customerID], nil
 }
 
-// SetLastEvent is the EventClock method.
-func (m *MemoryKeyStore) SetLastEvent(customerID string, created int64) error {
+// AdvanceLastEvent is the KeyStore method.
+func (m *MemoryKeyStore) AdvanceLastEvent(customerID string, created int64) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	last := m.clock[customerID]
+	if created < last {
+		return false, nil
+	}
 	if m.clock == nil {
 		m.clock = map[string]int64{}
 	}
 	m.clock[customerID] = created
-	return nil
+	return true, nil
 }
 
 func (m *MemoryKeyStore) Get(customerID string) (ed25519.PublicKey, error) {
@@ -87,7 +87,7 @@ func (m *MemoryKeyStore) Get(customerID string) (ed25519.PublicKey, error) {
 	if !ok {
 		return nil, ErrNoKey
 	}
-	return key, nil
+	return append(ed25519.PublicKey(nil), key...), nil
 }
 
 func (m *MemoryKeyStore) Put(customerID string, key ed25519.PublicKey) error {
@@ -133,10 +133,13 @@ type ObserveOptions struct {
 
 // ObserveEvent is Observe with two more checks. Use it for every verified event.
 //
+// First it calls store.AdvanceLastEvent. If the event is older than the last one handled for the customer, it returns ErrStaleEvent and
+// does nothing else, so a retried old event cannot pin an old key or erase a new one. The check and the update are one atomic store step,
+// so two events at the same time cannot both pass. Events with the same created second cannot be put in order and are all handled.
+//
 // A customer.reset or customer.deleted event erases the kept key only if opts.ApproveReset says yes. Without that callback it returns
-// ErrResetNotApproved and the key stays. If the store is an EventClock, an event older than the last one handled for the customer returns
-// ErrStaleEvent and changes nothing, so a retried old event cannot pin an old key or erase a new one. Events with the same created second
-// cannot be put in order and are all handled. If the store is not an EventClock, the order check is skipped.
+// ErrResetNotApproved and the key stays. The time is kept before this check, so a refused or failed event still counts as seen. A retry of
+// the same event has the same time and is handled again.
 func ObserveEvent(store KeyStore, event *webhook.Event, opts ObserveOptions) error {
 	if event == nil {
 		return ErrFormat
@@ -150,16 +153,12 @@ func ObserveEvent(store KeyStore, event *webhook.Event, opts ObserveOptions) err
 	if err != nil {
 		return err
 	}
-	clock, hasClock := store.(EventClock)
-	var last int64
-	if hasClock {
-		last, err = clock.LastEvent(id)
-		if err != nil {
-			return err
-		}
-		if event.Created < last {
-			return ErrStaleEvent
-		}
+	fresh, err := store.AdvanceLastEvent(id, event.Created)
+	if err != nil {
+		return err
+	}
+	if !fresh {
+		return ErrStaleEvent
 	}
 	if event.Type != eventCustomerEnrolled {
 		if opts.ApproveReset == nil {
@@ -173,13 +172,7 @@ func ObserveEvent(store KeyStore, event *webhook.Event, opts ObserveOptions) err
 			return ErrResetNotApproved
 		}
 	}
-	if err := Observe(store, event.Type, event.Data.Object); err != nil {
-		return err
-	}
-	if hasClock && event.Created > last {
-		return clock.SetLastEvent(id, event.Created)
-	}
-	return nil
+	return Observe(store, event.Type, event.Data.Object)
 }
 
 // Observe keeps the signing key that a verified webhook event names. It trusts the vault: it asks no approval before a reset erases a key and
@@ -201,7 +194,7 @@ func Observe(store KeyStore, eventType string, object json.RawMessage) error {
 		if err := json.Unmarshal(object, &o); err != nil || o.ID == "" {
 			return ErrFormat
 		}
-		key, err := base64.RawURLEncoding.Strict().DecodeString(o.VaultSignKey)
+		key, err := strict.DecodeString(o.VaultSignKey)
 		if err != nil || len(key) != ed25519.PublicKeySize {
 			return ErrFormat
 		}
